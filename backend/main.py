@@ -13,7 +13,10 @@ from models import (
 from chess_game import ChessGame
 from ai import ChessAI
 
-app = FastAPI(title="Chess API", version="1.0.0")
+# Server version - increment this when making changes
+VERSION = "1.1.0"
+
+app = FastAPI(title="Chess API", version=VERSION)
 
 # CORS middleware
 app.add_middleware(
@@ -103,7 +106,13 @@ def game_state_to_dict(game: ChessGame) -> dict:
 @app.get("/")
 async def root():
     """Root endpoint."""
-    return {"message": "Chess API is running", "docs": "/docs"}
+    return {"message": "Chess API is running", "docs": "/docs", "version": VERSION}
+
+
+@app.get("/api/version")
+async def get_version():
+    """Get server version."""
+    return {"version": VERSION}
 
 
 @app.get("/api/game/{game_id}/state")

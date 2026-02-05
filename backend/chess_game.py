@@ -375,7 +375,9 @@ class ChessGame:
         self.castling_rights = last_state['castling_rights']
         self.king_positions = last_state['king_positions']
         self.en_passant_target = last_state['en_passant_target']
-        self.current_player = last_state['current_player']
+        # current_player in history is the player who just moved
+        # After undo, it should be the opponent's turn (who was about to move)
+        self.current_player = 'black' if last_state['current_player'] == 'white' else 'white'
         
         # Recalculate captured pieces
         self.captured_by_white = []
