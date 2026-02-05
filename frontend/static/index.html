@@ -632,6 +632,31 @@
             color: white;
         }
 
+        /* 音效控制按钮 */
+        .sound-toggle {
+            position: fixed;
+            top: 20px;
+            right: 140px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #4b5563;
+            color: white;
+            border: none;
+        }
+
+        .sound-toggle:hover {
+            background: #6b7280;
+        }
+
+        .sound-toggle.muted {
+            background: #374151;
+            color: #9ca3af;
+        }
+
         /* 加载动画 */
         .loading {
             position: fixed;
@@ -687,6 +712,7 @@
     </style>
 </head>
 <body>
+    <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊 音效</button>
     <div class="api-status disconnected" id="apiStatus">API 未连接</div>
     <div class="loading" id="loading">
         <div class="loading-text">AI 思考中...</div>
@@ -832,6 +858,80 @@
         // API 配置
         const API_BASE_URL = 'http://localhost:8888/api';
         const GAME_ID = 'default';
+
+        // 音效配置
+        let soundEnabled = true;
+        let soundsLoaded = false;
+        
+        // 预加载音频文件
+        const sounds = {
+            move: new Audio('sounds/move.mp3'),
+            capture: new Audio('sounds/capture.mp3'),
+            check: new Audio('sounds/check.mp3'),
+            gameover: new Audio('sounds/gameover.mp3')
+        };
+        
+        // 设置音量
+        Object.values(sounds).forEach(sound => {
+            sound.volume = 0.5;
+        });
+
+        // 播放移动音效
+        function playMoveSound() {
+            if (!soundEnabled) return;
+            try {
+                sounds.move.currentTime = 0;
+                sounds.move.play().catch(e => console.log('Sound play failed:', e));
+            } catch (e) {
+                console.log('Sound play failed:', e);
+            }
+        }
+
+        // 播放吃子音效
+        function playCaptureSound() {
+            if (!soundEnabled) return;
+            try {
+                sounds.capture.currentTime = 0;
+                sounds.capture.play().catch(e => console.log('Sound play failed:', e));
+            } catch (e) {
+                console.log('Sound play failed:', e);
+            }
+        }
+
+        // 播放将军音效
+        function playCheckSound() {
+            if (!soundEnabled) return;
+            try {
+                sounds.check.currentTime = 0;
+                sounds.check.play().catch(e => console.log('Sound play failed:', e));
+            } catch (e) {
+                console.log('Sound play failed:', e);
+            }
+        }
+        
+        // 播放游戏结束音效
+        function playGameOverSound() {
+            if (!soundEnabled) return;
+            try {
+                sounds.gameover.currentTime = 0;
+                sounds.gameover.play().catch(e => console.log('Sound play failed:', e));
+            } catch (e) {
+                console.log('Sound play failed:', e);
+            }
+        }
+
+        // 切换音效开关
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            const btn = document.getElementById('soundToggle');
+            if (soundEnabled) {
+                btn.textContent = '🔊 音效';
+                btn.classList.remove('muted');
+            } else {
+                btn.textContent = '🔇 静音';
+                btn.classList.add('muted');
+            }
+        }
 
         // 棋子SVG文件路径
         const PIECES = {
@@ -1108,7 +1208,22 @@
                 const result = await response.json();
                 
                 if (result.success) {
+                    const prevGameState = gameState;
                     gameState = result.game_state;
+                    
+                    // 播放音效
+                    // 检查是否吃子（通过比较 captured 列表长度）
+                    const hadCapture = gameState.captured_by_white.length > (prevGameState?.captured_by_white?.length || 0) ||
+                                      gameState.captured_by_black.length > (prevGameState?.captured_by_black?.length || 0);
+                    
+                    if (hadCapture) {
+                        playCaptureSound();
+                    } else if (gameState.in_check) {
+                        playCheckSound();
+                    } else {
+                        playMoveSound();
+                    }
+                    
                     selectedSquare = null;
                     validMoves = [];
                     renderBoard();
@@ -1177,7 +1292,22 @@
                 const result = await response.json();
                 
                 if (result.game_state) {
+                    const prevGameState = gameState;
                     gameState = result.game_state;
+                    
+                    // 播放音效
+                    // 检查是否吃子
+                    const hadCapture = gameState.captured_by_white.length > (prevGameState?.captured_by_white?.length || 0) ||
+                                      gameState.captured_by_black.length > (prevGameState?.captured_by_black?.length || 0);
+                    
+                    if (hadCapture) {
+                        playCaptureSound();
+                    } else if (gameState.in_check) {
+                        playCheckSound();
+                    } else {
+                        playMoveSound();
+                    }
+                    
                     renderBoard();
                     updateStatus();
                     updateCapturedPieces();
@@ -1265,6 +1395,9 @@
         // 检查游戏结束
         function checkGameEnd() {
             if (!gameState || !gameState.game_over) return;
+            
+            // 播放游戏结束音效
+            playGameOverSound();
             
             if (gameState.winner) {
                 const winner = gameState.winner === 'white' ? '白方' : '黑方';
