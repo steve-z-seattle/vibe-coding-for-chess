@@ -366,20 +366,21 @@ class ChessGame:
         if len(self.move_history) < 2:
             return False
         
-        # Pop two moves (one for each player)
-        self.move_history.pop()
-        last_state = self.move_history.pop()
+        # Remove the last two moves from history (one for each player)
+        # But restore to the state after the first player's move
+        self.move_history.pop()  # Remove opponent's move
+        last_state = self.move_history[-1]  # Get current player's last move state (keep it in history)
         
         # Restore state
-        self.board = last_state['board']
-        self.castling_rights = last_state['castling_rights']
-        self.king_positions = last_state['king_positions']
+        self.board = copy.deepcopy(last_state['board'])
+        self.castling_rights = copy.deepcopy(last_state['castling_rights'])
+        self.king_positions = copy.deepcopy(last_state['king_positions'])
         self.en_passant_target = last_state['en_passant_target']
         # current_player in history is the player who just moved
-        # After undo, it should be the opponent's turn (who was about to move)
+        # After undo, it should be the opponent's turn
         self.current_player = 'black' if last_state['current_player'] == 'white' else 'white'
         
-        # Recalculate captured pieces
+        # Recalculate captured pieces from remaining history
         self.captured_by_white = []
         self.captured_by_black = []
         for move in self.move_history:
@@ -390,7 +391,7 @@ class ChessGame:
                     self.captured_by_black.append(move['captured'])
         
         # Update last move
-        if self.move_history:
+        if len(self.move_history) >= 1:
             self.last_move = {
                 'from': self.move_history[-1]['from'],
                 'to': self.move_history[-1]['to']
