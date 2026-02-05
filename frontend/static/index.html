@@ -872,7 +872,6 @@
         const sounds = {
             move: new Audio('sounds/move.mp3'),
             capture: new Audio('sounds/capture.mp3'),
-            check: new Audio('sounds/check.mp3'),
             gameover: new Audio('sounds/gameover.mp3')
         };
         
@@ -903,16 +902,7 @@
             }
         }
 
-        // 播放将军音效
-        function playCheckSound() {
-            if (!soundEnabled) return;
-            try {
-                sounds.check.currentTime = 0;
-                sounds.check.play().catch(e => console.log('Sound play failed:', e));
-            } catch (e) {
-                console.log('Sound play failed:', e);
-            }
-        }
+
         
         // 播放游戏结束音效
         function playGameOverSound() {
@@ -1226,8 +1216,6 @@
                     
                     if (hadCapture) {
                         playCaptureSound();
-                    } else if (gameState.in_check) {
-                        playCheckSound();
                     } else {
                         playMoveSound();
                     }
@@ -1312,8 +1300,6 @@
                     
                     if (hadCapture) {
                         playCaptureSound();
-                    } else if (gameState.in_check) {
-                        playCheckSound();
                     } else {
                         playMoveSound();
                     }
