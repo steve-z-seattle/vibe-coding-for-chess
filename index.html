@@ -139,11 +139,12 @@
         }
 
         .piece {
-            font-size: 45px;
+            width: 50px;
+            height: 50px;
             user-select: none;
             cursor: grab;
             transition: transform 0.15s ease;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            filter: drop-shadow(2px 2px 3px rgba(0,0,0,0.4));
             z-index: 10;
         }
 
@@ -153,13 +154,11 @@
         }
 
         .piece.white {
-            color: #fff;
-            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.5));
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
         }
 
         .piece.black {
-            color: #1a202c;
-            filter: drop-shadow(0 0 2px rgba(255,255,255,0.3));
+            filter: drop-shadow(0 0 2px rgba(255,255,255,0.2));
         }
 
         .info-panel {
@@ -201,7 +200,8 @@
         }
 
         .turn-piece {
-            font-size: 30px;
+            width: 35px;
+            height: 35px;
         }
 
         .captured-pieces {
@@ -226,7 +226,8 @@
         }
 
         .captured-piece {
-            font-size: 24px;
+            width: 28px;
+            height: 28px;
         }
 
         .buttons {
@@ -347,9 +348,10 @@
         }
 
         .promotion-piece {
-            font-size: 50px;
+            width: 55px;
+            height: 55px;
             cursor: pointer;
-            padding: 15px;
+            padding: 10px;
             background: rgba(255,255,255,0.1);
             border-radius: 12px;
             transition: all 0.3s ease;
@@ -408,7 +410,8 @@
                 height: 45px;
             }
             .piece {
-                font-size: 35px;
+                width: 38px;
+                height: 38px;
             }
             .board-wrapper {
                 padding: 25px;
@@ -426,7 +429,7 @@
     </style>
 </head>
 <body>
-    <h1>♔ 国际象棋 ♚</h1>
+    <h1>♔ 国际象棋</h1>
     
     <div class="game-container">
         <div class="board-section">
@@ -449,7 +452,7 @@
                 <div class="status-text" id="status">白方回合</div>
                 <div class="turn-indicator">
                     <span>轮到:</span>
-                    <span class="turn-piece" id="turnPiece">♔</span>
+                    <img class="turn-piece" id="turnPiece" src="pieces/w_king.svg" alt="turn indicator">
                 </div>
             </div>
             
@@ -494,10 +497,10 @@
     </div>
 
     <script>
-        // 棋子符号
+        // 棋子SVG文件路径
         const PIECES = {
-            white: { king: '♔', queen: '♕', rook: '♖', bishop: '♗', knight: '♘', pawn: '♙' },
-            black: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' }
+            white: { king: 'pieces/w_king.svg', queen: 'pieces/w_queen.svg', rook: 'pieces/w_rook.svg', bishop: 'pieces/w_bishop.svg', knight: 'pieces/w_knight.svg', pawn: 'pieces/w_pawn.svg' },
+            black: { king: 'pieces/b_king.svg', queen: 'pieces/b_queen.svg', rook: 'pieces/b_rook.svg', bishop: 'pieces/b_bishop.svg', knight: 'pieces/b_knight.svg', pawn: 'pieces/b_pawn.svg' }
         };
 
         // 游戏状态
@@ -605,9 +608,11 @@
                     
                     // 渲染棋子
                     if (piece) {
-                        const pieceEl = document.createElement('span');
+                        const pieceEl = document.createElement('img');
                         pieceEl.className = 'piece ' + piece.color;
-                        pieceEl.textContent = PIECES[piece.color][piece.type];
+                        pieceEl.src = PIECES[piece.color][piece.type];
+                        pieceEl.alt = piece.type;
+                        pieceEl.draggable = false;
                         square.appendChild(pieceEl);
                     }
                     
@@ -1131,9 +1136,10 @@
             
             const pieces = ['queen', 'rook', 'bishop', 'knight'];
             pieces.forEach(type => {
-                const pieceEl = document.createElement('span');
+                const pieceEl = document.createElement('img');
                 pieceEl.className = 'promotion-piece';
-                pieceEl.textContent = PIECES[currentPlayer][type];
+                pieceEl.src = PIECES[currentPlayer][type];
+                pieceEl.alt = type;
                 pieceEl.onclick = () => {
                     completePromotion(type);
                 };
@@ -1175,7 +1181,8 @@
                 statusEl.style.color = '#fff';
             }
             
-            turnPieceEl.textContent = PIECES[currentPlayer].king;
+            turnPieceEl.src = PIECES[currentPlayer].king;
+            turnPieceEl.alt = currentPlayer + ' king';
         }
 
         // 更新吃子显示
@@ -1184,11 +1191,11 @@
             const blackEl = document.getElementById('capturedByBlack');
             
             whiteEl.innerHTML = capturedByWhite.map(p => 
-                `<span class="captured-piece">${PIECES.black[p.type]}</span>`
+                `<img class="captured-piece" src="${PIECES.black[p.type]}" alt="${p.type}">`
             ).join('');
             
             blackEl.innerHTML = capturedByBlack.map(p => 
-                `<span class="captured-piece">${PIECES.white[p.type]}</span>`
+                `<img class="captured-piece" src="${PIECES.white[p.type]}" alt="${p.type}">`
             ).join('');
         }
 
