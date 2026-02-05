@@ -861,7 +861,8 @@
 
     <script>
         // API 配置
-        const API_BASE_URL = 'http://localhost:8888/api';
+        const SERVER_URL = 'http://localhost:8888';
+        const API_BASE_URL = `${SERVER_URL}/api`;
         const GAME_ID = 'default';
 
         // 音效配置
@@ -960,11 +961,15 @@
         // 检查 API 状态
         async function checkApiStatus() {
             try {
-                const response = await fetch(`${API_BASE_URL}/`);
+                const response = await fetch(SERVER_URL);
                 if (response.ok) {
                     document.getElementById('apiStatus').textContent = 'API 已连接';
                     document.getElementById('apiStatus').classList.remove('disconnected');
                     document.getElementById('apiStatus').classList.add('connected');
+                } else {
+                    document.getElementById('apiStatus').textContent = 'API 未连接';
+                    document.getElementById('apiStatus').classList.remove('connected');
+                    document.getElementById('apiStatus').classList.add('disconnected');
                 }
             } catch (error) {
                 document.getElementById('apiStatus').textContent = 'API 未连接';
