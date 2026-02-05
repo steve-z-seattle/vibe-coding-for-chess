@@ -204,6 +204,21 @@
             height: 35px;
         }
 
+        .game-mode-info {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .game-mode-label {
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
         .captured-pieces {
             margin-bottom: 20px;
         }
@@ -289,6 +304,12 @@
             transform: translateY(-2px);
         }
 
+        .btn-ai:disabled {
+            background: linear-gradient(145deg, #6b7280, #4b5563);
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .move-history {
             max-height: 200px;
             overflow-y: auto;
@@ -319,6 +340,40 @@
 
         .move-white, .move-black {
             color: #e5e7eb;
+        }
+
+        /* 对话框通用样式 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-dialog {
+            background: linear-gradient(145deg, #2d3748, #1a202c);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .modal-title {
+            font-size: 28px;
+            margin-bottom: 25px;
+            color: #fff;
         }
 
         /* 升变对话框 */
@@ -409,6 +464,152 @@
             margin-bottom: 30px;
         }
 
+        /* 游戏模式选择对话框 */
+        .mode-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .mode-option {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+        }
+
+        .mode-option:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: #3b82f6;
+        }
+
+        .mode-option input[type="radio"] {
+            margin-right: 15px;
+            width: 20px;
+            height: 20px;
+            accent-color: #3b82f6;
+        }
+
+        .mode-option-label {
+            flex: 1;
+        }
+
+        .mode-option-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #fff;
+            display: block;
+        }
+
+        .mode-option-desc {
+            font-size: 13px;
+            color: #9ca3af;
+            display: block;
+            margin-top: 4px;
+        }
+
+        /* AI 设置 */
+        .ai-settings {
+            background: rgba(0,0,0,0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: left;
+        }
+
+        .setting-group {
+            margin-bottom: 15px;
+        }
+
+        .setting-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .setting-label {
+            display: block;
+            font-size: 14px;
+            color: #a0aec0;
+            margin-bottom: 8px;
+        }
+
+        .color-options {
+            display: flex;
+            gap: 10px;
+        }
+
+        .color-option {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .color-option:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .color-option.selected {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .color-option img {
+            width: 24px;
+            height: 24px;
+        }
+
+        .difficulty-options {
+            display: flex;
+            gap: 10px;
+        }
+
+        .difficulty-option {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .difficulty-option:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .difficulty-option.selected {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.2);
+        }
+
+        .difficulty-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+            display: block;
+        }
+
+        .difficulty-desc {
+            font-size: 11px;
+            color: #9ca3af;
+            display: block;
+            margin-top: 2px;
+        }
+
         /* API 状态指示器 */
         .api-status {
             position: fixed;
@@ -479,6 +680,9 @@
             h1 {
                 font-size: 1.8rem;
             }
+            .modal-dialog {
+                padding: 25px;
+            }
         }
     </style>
 </head>
@@ -515,6 +719,10 @@
                 </div>
             </div>
             
+            <div class="game-mode-info" id="gameModeInfo" style="display: none;">
+                <span class="game-mode-label" id="gameModeLabel">人人对战</span>
+            </div>
+            
             <div class="captured-pieces">
                 <div class="captured-title">白方吃掉的黑子</div>
                 <div class="captured-list" id="capturedByWhite"></div>
@@ -531,11 +739,74 @@
             </div>
             
             <div class="buttons">
-                <button class="btn-ai" onclick="requestAIMove()">🤖 AI 走棋</button>
+                <button class="btn-ai" id="aiMoveBtn" onclick="requestAIMove()" style="display: none;">🤖 AI 走棋</button>
                 <button class="btn-secondary" onclick="undoMove()">↩ 悔棋</button>
                 <button class="btn-primary" onclick="resetGame()">🔄 新游戏</button>
                 <button class="btn-danger" onclick="flipBoard()">🔃 翻转棋盘</button>
+                <button class="btn-secondary" onclick="showGameModeModal()">⚙️ 游戏设置</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 游戏模式选择对话框 -->
+    <div class="modal active" id="gameModeModal">
+        <div class="modal-dialog">
+            <div class="modal-title">选择游戏模式</div>
+            
+            <div class="mode-options">
+                <label class="mode-option" onclick="selectGameMode('pvp')">
+                    <input type="radio" name="gameMode" value="pvp" id="modePvp" checked>
+                    <div class="mode-option-label">
+                        <span class="mode-option-title">👥 人人对战</span>
+                        <span class="mode-option-desc">两位玩家在同一设备上对战</span>
+                    </div>
+                </label>
+                
+                <label class="mode-option" onclick="selectGameMode('pve')">
+                    <input type="radio" name="gameMode" value="pve" id="modePve">
+                    <div class="mode-option-label">
+                        <span class="mode-option-title">🤖 人机对战</span>
+                        <span class="mode-option-desc">与 AI 进行对战</span>
+                    </div>
+                </label>
+            </div>
+            
+            <!-- AI 设置 -->
+            <div class="ai-settings" id="aiSettings" style="display: none;">
+                <div class="setting-group">
+                    <span class="setting-label">选择你的颜色</span>
+                    <div class="color-options">
+                        <div class="color-option selected" id="colorWhite" onclick="selectPlayerColor('white')">
+                            <img src="pieces/w_king.svg" alt="白方">
+                            <span>白方</span>
+                        </div>
+                        <div class="color-option" id="colorBlack" onclick="selectPlayerColor('black')">
+                            <img src="pieces/b_king.svg" alt="黑方">
+                            <span>黑方</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="setting-group">
+                    <span class="setting-label">AI 难度</span>
+                    <div class="difficulty-options">
+                        <div class="difficulty-option selected" id="diffEasy" onclick="selectDifficulty(2)">
+                            <span class="difficulty-name">简单</span>
+                            <span class="difficulty-desc">思考快</span>
+                        </div>
+                        <div class="difficulty-option" id="diffMedium" onclick="selectDifficulty(3)">
+                            <span class="difficulty-name">中等</span>
+                            <span class="difficulty-desc">较平衡</span>
+                        </div>
+                        <div class="difficulty-option" id="diffHard" onclick="selectDifficulty(4)">
+                            <span class="difficulty-name">困难</span>
+                            <span class="difficulty-desc">思考慢</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn-primary" onclick="startGame()" style="width: 100%;">开始游戏</button>
         </div>
     </div>
 
@@ -552,13 +823,14 @@
         <div class="game-over-dialog">
             <div class="game-over-title" id="gameOverTitle">游戏结束</div>
             <div class="game-over-message" id="gameOverMessage"></div>
-            <button class="btn-primary" onclick="resetGame(); closeGameOverModal();">再来一局</button>
+            <button class="btn-primary" onclick="resetGame(); closeGameOverModal();" style="margin-bottom: 10px;">再来一局</button>
+            <button class="btn-secondary" onclick="closeGameOverModal(); showGameModeModal();" style="width: 100%;">更改设置</button>
         </div>
     </div>
 
     <script>
         // API 配置
-        const API_BASE_URL = 'http://localhost:8000/api';
+        const API_BASE_URL = 'http://localhost:8888/api';
         const GAME_ID = 'default';
 
         // 棋子SVG文件路径
@@ -573,15 +845,18 @@
         let validMoves = [];
         let isFlipped = false;
         let pendingPromotion = null;
+        
+        // 游戏配置
+        let gameConfig = {
+            mode: 'pvp',  // 'pvp' 或 'pve'
+            playerColor: 'white',  // 玩家颜色（人机模式下）
+            aiDifficulty: 2  // AI 难度等级
+        };
 
         // 初始化
         async function init() {
-            await loadGameState();
-            renderBoard();
-            updateStatus();
-            updateCapturedPieces();
-            updateMoveList();
-            checkApiStatus();
+            await checkApiStatus();
+            // 等待用户选择游戏模式
         }
 
         // 检查 API 状态
@@ -597,6 +872,89 @@
                 document.getElementById('apiStatus').textContent = 'API 未连接';
                 document.getElementById('apiStatus').classList.remove('connected');
                 document.getElementById('apiStatus').classList.add('disconnected');
+            }
+        }
+
+        // 选择游戏模式
+        function selectGameMode(mode) {
+            gameConfig.mode = mode;
+            document.getElementById('modePvp').checked = (mode === 'pvp');
+            document.getElementById('modePve').checked = (mode === 'pve');
+            
+            const aiSettings = document.getElementById('aiSettings');
+            if (mode === 'pve') {
+                aiSettings.style.display = 'block';
+            } else {
+                aiSettings.style.display = 'none';
+            }
+        }
+
+        // 选择玩家颜色
+        function selectPlayerColor(color) {
+            gameConfig.playerColor = color;
+            document.getElementById('colorWhite').classList.toggle('selected', color === 'white');
+            document.getElementById('colorBlack').classList.toggle('selected', color === 'black');
+        }
+
+        // 选择 AI 难度
+        function selectDifficulty(level) {
+            gameConfig.aiDifficulty = level;
+            document.getElementById('diffEasy').classList.toggle('selected', level === 2);
+            document.getElementById('diffMedium').classList.toggle('selected', level === 3);
+            document.getElementById('diffHard').classList.toggle('selected', level === 4);
+        }
+
+        // 显示游戏模式对话框
+        function showGameModeModal() {
+            document.getElementById('gameModeModal').classList.add('active');
+        }
+
+        // 开始游戏
+        async function startGame() {
+            // 设置 AI 难度
+            if (gameConfig.mode === 'pve') {
+                try {
+                    await fetch(`${API_BASE_URL}/game/${GAME_ID}/ai-config`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ depth: gameConfig.aiDifficulty })
+                    });
+                } catch (error) {
+                    console.log('AI config endpoint not available, using default');
+                }
+            }
+            
+            // 隐藏模式选择对话框
+            document.getElementById('gameModeModal').classList.remove('active');
+            
+            // 显示游戏模式信息
+            const modeInfo = document.getElementById('gameModeInfo');
+            const modeLabel = document.getElementById('gameModeLabel');
+            const aiMoveBtn = document.getElementById('aiMoveBtn');
+            
+            modeInfo.style.display = 'block';
+            
+            if (gameConfig.mode === 'pvp') {
+                modeLabel.textContent = '👥 人人对战';
+                aiMoveBtn.style.display = 'none';
+            } else {
+                const colorText = gameConfig.playerColor === 'white' ? '白方' : '黑方';
+                const diffText = gameConfig.aiDifficulty === 2 ? '简单' : (gameConfig.aiDifficulty === 3 ? '中等' : '困难');
+                modeLabel.textContent = `🤖 人机对战 | 你是${colorText} | ${diffText}`;
+                aiMoveBtn.style.display = 'none';  // 自动走棋，不需要按钮
+                
+                // 如果玩家选择黑方，AI（白方）先走
+                if (gameConfig.playerColor === 'black') {
+                    isFlipped = true;  // 翻转棋盘，让玩家的颜色在下方
+                }
+            }
+            
+            // 重置游戏
+            await resetGame();
+            
+            // 如果是人机模式且玩家执黑，AI 先走
+            if (gameConfig.mode === 'pve' && gameConfig.playerColor === 'black') {
+                setTimeout(() => requestAIMove(), 500);
             }
         }
 
@@ -681,6 +1039,11 @@
             if (pendingPromotion) return;
             if (!gameState || gameState.game_over) return;
             
+            // 人机模式下，检查是否是玩家回合
+            if (gameConfig.mode === 'pve' && gameState.current_player !== gameConfig.playerColor) {
+                return;  // 不是玩家回合，忽略点击
+            }
+            
             const piece = gameState.board[row][col];
             
             // 如果点击了有效移动位置
@@ -753,6 +1116,13 @@
                     updateCapturedPieces();
                     updateMoveList();
                     checkGameEnd();
+                    
+                    // 人机模式下，玩家走完后自动触发 AI 走棋
+                    if (gameConfig.mode === 'pve' && 
+                        !gameState.game_over && 
+                        gameState.current_player !== gameConfig.playerColor) {
+                        setTimeout(() => requestAIMove(), 500);
+                    }
                 } else {
                     showError(result.message);
                 }
@@ -859,32 +1229,6 @@
             ).join('');
         }
 
-        // 生成代数记谱
-        function getMoveNotation(piece, from, to, captured, promotion) {
-            let notation = '';
-            
-            if (piece.type !== 'pawn') {
-                notation += piece.type.charAt(0).toUpperCase();
-            }
-            
-            if (piece.type === 'pawn' && captured) {
-                notation += String.fromCharCode(97 + from.col);
-            }
-            
-            if (captured) {
-                notation += 'x';
-            }
-            
-            notation += String.fromCharCode(97 + to.col);
-            notation += (8 - to.row);
-            
-            if (promotion) {
-                notation += '=' + promotion.charAt(0).toUpperCase();
-            }
-            
-            return notation;
-        }
-
         // 更新走棋记录
         function updateMoveList() {
             if (!gameState) return;
@@ -901,7 +1245,6 @@
                 // 白方移动
                 const whiteMove = document.createElement('span');
                 whiteMove.className = 'move-white';
-                // 简化显示，实际应该存储记谱
                 const whiteMoveData = gameState.move_history[i];
                 whiteMove.textContent = `${whiteMoveData.piece.type} ${String.fromCharCode(97 + whiteMoveData.from.col)}${8 - whiteMoveData.from.row}-${String.fromCharCode(97 + whiteMoveData.to.col)}${8 - whiteMoveData.to.row}`;
                 moveListEl.appendChild(whiteMove);
@@ -961,6 +1304,22 @@
                     updateStatus();
                     updateCapturedPieces();
                     updateMoveList();
+                    
+                    // 人机模式下悔棋后，如果是AI回合，需要再悔一步
+                    if (gameConfig.mode === 'pve' && gameState.current_player !== gameConfig.playerColor) {
+                        setTimeout(async () => {
+                            const response2 = await fetch(`${API_BASE_URL}/game/${GAME_ID}/undo`, {
+                                method: 'POST'
+                            });
+                            if (response2.ok) {
+                                gameState = await response2.json();
+                                renderBoard();
+                                updateStatus();
+                                updateCapturedPieces();
+                                updateMoveList();
+                            }
+                        }, 100);
+                    }
                 }
             } catch (error) {
                 console.error('Undo failed:', error);
@@ -983,6 +1342,11 @@
                     updateStatus();
                     updateCapturedPieces();
                     updateMoveList();
+                    
+                    // 如果是人机模式且玩家执黑，AI 先走
+                    if (gameConfig.mode === 'pve' && gameConfig.playerColor === 'black') {
+                        setTimeout(() => requestAIMove(), 500);
+                    }
                 }
             } catch (error) {
                 console.error('Reset failed:', error);

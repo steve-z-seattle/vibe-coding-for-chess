@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from models import (
     MoveRequest, MoveResponse, ValidMovesResponse, ValidMove,
-    GameState, AIMoveResponse, Position
+    GameState, AIMoveResponse, Position, AIConfigRequest
 )
 from chess_game import ChessGame
 from ai import ChessAI
@@ -65,8 +65,8 @@ def game_state_to_dict(game: ChessGame) -> dict:
     last_move = None
     if state.last_move:
         last_move = {
-            "from": {"row": state.last_move["from"].row, "col": state.last_move["from"].col},
-            "to": {"row": state.last_move["to"].row, "col": state.last_move["to"].col}
+            "from": {"row": state.last_move.from_pos.row, "col": state.last_move.from_pos.col},
+            "to": {"row": state.last_move.to_pos.row, "col": state.last_move.to_pos.col}
         }
     
     # Convert en passant target
@@ -187,6 +187,14 @@ async def check_game_end(game_id: str = "default"):
     game = get_or_create_game(game_id)
     result = game.check_game_end()
     return result
+
+
+@app.post("/api/game/{game_id}/ai-config")
+async def configure_ai(config: AIConfigRequest, game_id: str = "default"):
+    """Configure AI difficulty."""
+    global ai_players
+    ai_players[game_id] = ChessAI(depth=config.depth)
+    return {"success": True, "depth": config.depth}
 
 
 # Mount static files - 从 backend 目录向上退一级到项目根目录，再进入 frontend/static

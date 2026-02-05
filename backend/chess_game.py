@@ -461,7 +461,17 @@ class ChessGame:
 
     def get_game_state(self) -> GameState:
         """Get the current game state."""
+        from models import LastMove
+        
         game_end = self.check_game_end()
+        
+        # Convert last_move format if exists
+        last_move_obj = None
+        if self.last_move:
+            last_move_obj = LastMove(
+                from_pos=self.last_move['from'],
+                to_pos=self.last_move['to']
+            )
         
         return GameState(
             board=self.board,
@@ -469,7 +479,7 @@ class ChessGame:
             move_history=self.move_history,
             captured_by_white=self.captured_by_white,
             captured_by_black=self.captured_by_black,
-            last_move=self.last_move,
+            last_move=last_move_obj,
             king_positions=self.king_positions,
             castling_rights=self.castling_rights,
             en_passant_target=self.en_passant_target,

@@ -43,13 +43,18 @@ class ValidMovesResponse(BaseModel):
     moves: List[ValidMove]
 
 
+class LastMove(BaseModel):
+    from_pos: Position
+    to_pos: Position
+
+
 class GameState(BaseModel):
     board: List[List[Optional[Piece]]]
     current_player: str
     move_history: List[Dict[str, Any]]
     captured_by_white: List[Piece]
     captured_by_black: List[Piece]
-    last_move: Optional[Move] = None
+    last_move: Optional[LastMove] = None
     king_positions: Dict[str, Position]
     castling_rights: Dict[str, Dict[str, bool]]
     en_passant_target: Optional[Position] = None
@@ -60,8 +65,12 @@ class GameState(BaseModel):
 
 
 class AIMoveResponse(BaseModel):
-    move: Optional[Move] = None
+    move: Optional[Dict[str, Any]] = None
     from_pos: Optional[Position] = None
     to_pos: Optional[Position] = None
-    game_state: Optional[GameState] = None
+    game_state: Optional[Dict[str, Any]] = None
     message: str
+
+
+class AIConfigRequest(BaseModel):
+    depth: int = 3  # AI 搜索深度，2=简单, 3=中等, 4=困难
