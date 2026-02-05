@@ -435,9 +435,10 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.8);
-            justify-content: center;
-            align-items: center;
+            background: rgba(0,0,0,0.5);
+            justify-content: flex-end;
+            align-items: flex-start;
+            padding: 20px;
             z-index: 1000;
         }
 
@@ -447,21 +448,24 @@
 
         .game-over-dialog {
             background: linear-gradient(145deg, #2d3748, #1a202c);
-            padding: 40px;
-            border-radius: 20px;
+            padding: 25px;
+            border-radius: 16px;
             text-align: center;
-            max-width: 400px;
+            max-width: 280px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            margin-top: 80px;
+            margin-right: 20px;
         }
 
         .game-over-title {
-            font-size: 32px;
-            margin-bottom: 15px;
+            font-size: 24px;
+            margin-bottom: 10px;
         }
 
         .game-over-message {
-            font-size: 18px;
+            font-size: 14px;
             color: #a0aec0;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         /* 游戏模式选择对话框 */
@@ -850,6 +854,7 @@
             <div class="game-over-title" id="gameOverTitle">游戏结束</div>
             <div class="game-over-message" id="gameOverMessage"></div>
             <button class="btn-primary" onclick="resetGame(); closeGameOverModal();" style="margin-bottom: 10px;">再来一局</button>
+            <button class="btn-secondary" onclick="closeGameOverModal();" style="margin-bottom: 10px; width: 100%;">查看棋局</button>
             <button class="btn-secondary" onclick="closeGameOverModal(); showGameModeModal();" style="width: 100%;">更改设置</button>
         </div>
     </div>
@@ -1480,6 +1485,13 @@
         function closeGameOverModal() {
             document.getElementById('gameOverModal').classList.remove('active');
         }
+
+        // 点击模态框背景关闭
+        document.getElementById('gameOverModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeGameOverModal();
+            }
+        });
 
         // 悔棋
         async function undoMove() {
