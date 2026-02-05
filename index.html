@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>国际象棋</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            font-size: 2.5rem;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .board-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .board-wrapper {
+            position: relative;
+            padding: 30px;
+            background: linear-gradient(145deg, #2d3748, #1a202c);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .coordinates {
+            position: absolute;
+            font-size: 14px;
+            font-weight: bold;
+            color: #a0aec0;
+        }
+
+        .coord-file {
+            bottom: 8px;
+            display: flex;
+            justify-content: space-around;
+            width: 480px;
+            left: 30px;
+        }
+
+        .coord-rank {
+            left: 8px;
+            display: flex;
+            flex-direction: column-reverse;
+            justify-content: space-around;
+            height: 480px;
+            top: 30px;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            border: 4px solid #4a5568;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .square.light {
+            background: linear-gradient(145deg, #f0d9b5, #e8cfa0);
+        }
+
+        .square.dark {
+            background: linear-gradient(145deg, #b58863, #a07850);
+        }
+
+        .square:hover {
+            filter: brightness(1.1);
+        }
+
+        .square.selected {
+            background: linear-gradient(145deg, #7dd3fc, #38bdf8) !important;
+            box-shadow: inset 0 0 15px rgba(56, 189, 248, 0.5);
+        }
+
+        .square.valid-move::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: rgba(34, 197, 94, 0.6);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .square.valid-capture {
+            background: linear-gradient(145deg, #fca5a5, #f87171) !important;
+        }
+
+        .square.last-move {
+            box-shadow: inset 0 0 10px rgba(251, 191, 36, 0.6);
+        }
+
+        .square.check {
+            animation: pulse-red 1s infinite;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.8); }
+            50% { box-shadow: inset 0 0 30px rgba(239, 68, 68, 1); }
+        }
+
+        .piece {
+            font-size: 45px;
+            user-select: none;
+            cursor: grab;
+            transition: transform 0.15s ease;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        .piece:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+
+        .piece.white {
+            color: #fff;
+            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.5));
+        }
+
+        .piece.black {
+            color: #1a202c;
+            filter: drop-shadow(0 0 2px rgba(255,255,255,0.3));
+        }
+
+        .info-panel {
+            background: linear-gradient(145deg, #2d3748, #1a202c);
+            border-radius: 16px;
+            padding: 25px;
+            min-width: 280px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+
+        .status-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status-title {
+            font-size: 14px;
+            color: #a0aec0;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-text {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .turn-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .turn-piece {
+            font-size: 30px;
+        }
+
+        .captured-pieces {
+            margin-bottom: 20px;
+        }
+
+        .captured-title {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .captured-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            min-height: 40px;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+
+        .captured-piece {
+            font-size: 24px;
+        }
+
+        .buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        button {
+            padding: 14px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(145deg, #3b82f6, #2563eb);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(145deg, #60a5fa, #3b82f6);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(145deg, #4b5563, #374151);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(145deg, #6b7280, #4b5563);
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: linear-gradient(145deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(145deg, #f87171, #ef4444);
+            transform: translateY(-2px);
+        }
+
+        .move-history {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .move-history-title {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .move-list {
+            display: grid;
+            grid-template-columns: auto 1fr 1fr;
+            gap: 5px 15px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .move-number {
+            color: #6b7280;
+        }
+
+        .move-white, .move-black {
+            color: #e5e7eb;
+        }
+
+        /* 升变对话框 */
+        .promotion-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .promotion-modal.active {
+            display: flex;
+        }
+
+        .promotion-dialog {
+            background: linear-gradient(145deg, #2d3748, #1a202c);
+            padding: 30px;
+            border-radius: 16px;
+            text-align: center;
+        }
+
+        .promotion-title {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .promotion-options {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .promotion-piece {
+            font-size: 50px;
+            cursor: pointer;
+            padding: 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .promotion-piece:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.1);
+        }
+
+        /* 游戏结束对话框 */
+        .game-over-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .game-over-modal.active {
+            display: flex;
+        }
+
+        .game-over-dialog {
+            background: linear-gradient(145deg, #2d3748, #1a202c);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        .game-over-title {
+            font-size: 32px;
+            margin-bottom: 15px;
+        }
+
+        .game-over-message {
+            font-size: 18px;
+            color: #a0aec0;
+            margin-bottom: 30px;
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .board {
+                grid-template-columns: repeat(8, 45px);
+                grid-template-rows: repeat(8, 45px);
+            }
+            .square {
+                width: 45px;
+                height: 45px;
+            }
+            .piece {
+                font-size: 35px;
+            }
+            .board-wrapper {
+                padding: 25px;
+            }
+            .coord-file {
+                width: 360px;
+            }
+            .coord-rank {
+                height: 360px;
+            }
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>♔ 国际象棋 ♚</h1>
+    
+    <div class="game-container">
+        <div class="board-section">
+            <div class="board-wrapper">
+                <div class="coordinates coord-rank">
+                    <span>1</span><span>2</span><span>3</span><span>4</span>
+                    <span>5</span><span>6</span><span>7</span><span>8</span>
+                </div>
+                <div class="board" id="board"></div>
+                <div class="coordinates coord-file">
+                    <span>a</span><span>b</span><span>c</span><span>d</span>
+                    <span>e</span><span>f</span><span>g</span><span>h</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="info-panel">
+            <div class="status-box">
+                <div class="status-title">游戏状态</div>
+                <div class="status-text" id="status">白方回合</div>
+                <div class="turn-indicator">
+                    <span>轮到:</span>
+                    <span class="turn-piece" id="turnPiece">♔</span>
+                </div>
+            </div>
+            
+            <div class="captured-pieces">
+                <div class="captured-title">白方吃掉的黑子</div>
+                <div class="captured-list" id="capturedByWhite"></div>
+            </div>
+            
+            <div class="captured-pieces">
+                <div class="captured-title">黑方吃掉的白子</div>
+                <div class="captured-list" id="capturedByBlack"></div>
+            </div>
+            
+            <div class="move-history">
+                <div class="move-history-title">走棋记录</div>
+                <div class="move-list" id="moveList"></div>
+            </div>
+            
+            <div class="buttons">
+                <button class="btn-secondary" onclick="undoMove()">↩ 悔棋</button>
+                <button class="btn-primary" onclick="resetGame()">🔄 新游戏</button>
+                <button class="btn-danger" onclick="flipBoard()">🔃 翻转棋盘</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 升变对话框 -->
+    <div class="promotion-modal" id="promotionModal">
+        <div class="promotion-dialog">
+            <div class="promotion-title">选择升变棋子</div>
+            <div class="promotion-options" id="promotionOptions"></div>
+        </div>
+    </div>
+
+    <!-- 游戏结束对话框 -->
+    <div class="game-over-modal" id="gameOverModal">
+        <div class="game-over-dialog">
+            <div class="game-over-title" id="gameOverTitle">游戏结束</div>
+            <div class="game-over-message" id="gameOverMessage"></div>
+            <button class="btn-primary" onclick="resetGame(); closeGameOverModal();">再来一局</button>
+        </div>
+    </div>
+
+    <script>
+        // 棋子符号
+        const PIECES = {
+            white: { king: '♔', queen: '♕', rook: '♖', bishop: '♗', knight: '♘', pawn: '♙' },
+            black: { king: '♚', queen: '♛', rook: '♜', bishop: '♝', knight: '♞', pawn: '♟' }
+        };
+
+        // 游戏状态
+        let board = [];
+        let currentPlayer = 'white';
+        let selectedSquare = null;
+        let validMoves = [];
+        let moveHistory = [];
+        let capturedByWhite = [];
+        let capturedByBlack = [];
+        let isFlipped = false;
+        let lastMove = null;
+        let kingPositions = { white: { row: 7, col: 4 }, black: { row: 0, col: 4 } };
+        let castlingRights = {
+            white: { kingSide: true, queenSide: true },
+            black: { kingSide: true, queenSide: true }
+        };
+        let enPassantTarget = null;
+        let pendingPromotion = null;
+
+        // 初始化棋盘
+        function initBoard() {
+            board = [
+                [{ color: 'black', type: 'rook' }, { color: 'black', type: 'knight' }, 
+                 { color: 'black', type: 'bishop' }, { color: 'black', type: 'queen' },
+                 { color: 'black', type: 'king' }, { color: 'black', type: 'bishop' },
+                 { color: 'black', type: 'knight' }, { color: 'black', type: 'rook' }],
+                Array(8).fill(null).map(() => ({ color: 'black', type: 'pawn' })),
+                Array(8).fill(null),
+                Array(8).fill(null),
+                Array(8).fill(null),
+                Array(8).fill(null),
+                Array(8).fill(null).map(() => ({ color: 'white', type: 'pawn' })),
+                [{ color: 'white', type: 'rook' }, { color: 'white', type: 'knight' },
+                 { color: 'white', type: 'bishop' }, { color: 'white', type: 'queen' },
+                 { color: 'white', type: 'king' }, { color: 'white', type: 'bishop' },
+                 { color: 'white', type: 'knight' }, { color: 'white', type: 'rook' }]
+            ];
+            
+            currentPlayer = 'white';
+            selectedSquare = null;
+            validMoves = [];
+            moveHistory = [];
+            capturedByWhite = [];
+            capturedByBlack = [];
+            lastMove = null;
+            kingPositions = { white: { row: 7, col: 4 }, black: { row: 0, col: 4 } };
+            castlingRights = {
+                white: { kingSide: true, queenSide: true },
+                black: { kingSide: true, queenSide: true }
+            };
+            enPassantTarget = null;
+            pendingPromotion = null;
+            
+            renderBoard();
+            updateStatus();
+            updateCapturedPieces();
+            updateMoveList();
+        }
+
+        // 渲染棋盘
+        function renderBoard() {
+            const boardEl = document.getElementById('board');
+            boardEl.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const displayRow = isFlipped ? 7 - row : row;
+                    const displayCol = isFlipped ? 7 - col : col;
+                    const piece = board[displayRow][displayCol];
+                    
+                    const square = document.createElement('div');
+                    square.className = 'square ' + ((row + col) % 2 === 0 ? 'light' : 'dark');
+                    square.dataset.row = displayRow;
+                    square.dataset.col = displayCol;
+                    
+                    // 高亮选中的格子
+                    if (selectedSquare && selectedSquare.row === displayRow && selectedSquare.col === displayCol) {
+                        square.classList.add('selected');
+                    }
+                    
+                    // 高亮有效移动
+                    if (validMoves.some(m => m.row === displayRow && m.col === displayCol)) {
+                        if (board[displayRow][displayCol]) {
+                            square.classList.add('valid-capture');
+                        } else {
+                            square.classList.add('valid-move');
+                        }
+                    }
+                    
+                    // 高亮上一步
+                    if (lastMove) {
+                        if ((lastMove.from.row === displayRow && lastMove.from.col === displayCol) ||
+                            (lastMove.to.row === displayRow && lastMove.to.col === displayCol)) {
+                            square.classList.add('last-move');
+                        }
+                    }
+                    
+                    // 高亮被将军的王
+                    if (piece && piece.type === 'king') {
+                        if (isInCheck(piece.color)) {
+                            square.classList.add('check');
+                        }
+                    }
+                    
+                    // 渲染棋子
+                    if (piece) {
+                        const pieceEl = document.createElement('span');
+                        pieceEl.className = 'piece ' + piece.color;
+                        pieceEl.textContent = PIECES[piece.color][piece.type];
+                        square.appendChild(pieceEl);
+                    }
+                    
+                    square.addEventListener('click', () => handleSquareClick(displayRow, displayCol));
+                    boardEl.appendChild(square);
+                }
+            }
+        }
+
+        // 处理格子点击
+        function handleSquareClick(row, col) {
+            if (pendingPromotion) return;
+            
+            const piece = board[row][col];
+            
+            // 如果点击了有效移动位置
+            if (selectedSquare && validMoves.some(m => m.row === row && m.col === col)) {
+                // 检查是否是兵升变
+                const movingPiece = board[selectedSquare.row][selectedSquare.col];
+                if (movingPiece.type === 'pawn' && (row === 0 || row === 7)) {
+                    pendingPromotion = { from: selectedSquare, to: { row, col } };
+                    showPromotionDialog();
+                    return;
+                }
+                
+                makeMove(selectedSquare, { row, col });
+                return;
+            }
+            
+            // 如果点击了自己的棋子，选中它
+            if (piece && piece.color === currentPlayer) {
+                selectedSquare = { row, col };
+                validMoves = getValidMoves(row, col);
+                renderBoard();
+                return;
+            }
+            
+            // 取消选择
+            selectedSquare = null;
+            validMoves = [];
+            renderBoard();
+        }
+
+        // 获取有效移动（包含将军检查）
+        function getValidMoves(row, col) {
+            const piece = board[row][col];
+            if (!piece) return [];
+            
+            const moves = getPossibleMoves(row, col);
+            
+            // 过滤掉会导致自己被将军的移动
+            return moves.filter(move => {
+                // 模拟移动
+                const originalTarget = board[move.row][move.col];
+                const originalKingPos = { ...kingPositions[piece.color] };
+                
+                board[move.row][move.col] = piece;
+                board[row][col] = null;
+                
+                // 更新王的位置
+                if (piece.type === 'king') {
+                    kingPositions[piece.color] = { row: move.row, col: move.col };
+                }
+                
+                // 检查是否被将军
+                const inCheck = isInCheck(piece.color);
+                
+                // 恢复
+                board[row][col] = piece;
+                board[move.row][move.col] = originalTarget;
+                kingPositions[piece.color] = originalKingPos;
+                
+                return !inCheck;
+            });
+        }
+
+        // 获取可能的移动（不考虑将军）
+        function getPossibleMoves(row, col) {
+            const piece = board[row][col];
+            if (!piece) return [];
+            
+            const moves = [];
+            
+            switch (piece.type) {
+                case 'pawn':
+                    moves.push(...getPawnMoves(row, col, piece.color));
+                    break;
+                case 'knight':
+                    moves.push(...getKnightMoves(row, col, piece.color));
+                    break;
+                case 'bishop':
+                    moves.push(...getBishopMoves(row, col, piece.color));
+                    break;
+                case 'rook':
+                    moves.push(...getRookMoves(row, col, piece.color));
+                    break;
+                case 'queen':
+                    moves.push(...getBishopMoves(row, col, piece.color));
+                    moves.push(...getRookMoves(row, col, piece.color));
+                    break;
+                case 'king':
+                    moves.push(...getKingMoves(row, col, piece.color));
+                    break;
+            }
+            
+            return moves;
+        }
+
+        // 兵的移动
+        function getPawnMoves(row, col, color) {
+            const moves = [];
+            const direction = color === 'white' ? -1 : 1;
+            const startRow = color === 'white' ? 6 : 1;
+            
+            // 向前一格
+            if (isValidSquare(row + direction, col) && !board[row + direction][col]) {
+                moves.push({ row: row + direction, col });
+                
+                // 向前两格（起始位置）
+                if (row === startRow && !board[row + 2 * direction][col]) {
+                    moves.push({ row: row + 2 * direction, col });
+                }
+            }
+            
+            // 斜向吃子
+            for (const dc of [-1, 1]) {
+                const newCol = col + dc;
+                if (isValidSquare(row + direction, newCol)) {
+                    const target = board[row + direction][newCol];
+                    if (target && target.color !== color) {
+                        moves.push({ row: row + direction, col: newCol });
+                    }
+                    
+                    // 吃过路兵
+                    if (enPassantTarget && 
+                        enPassantTarget.row === row + direction && 
+                        enPassantTarget.col === newCol) {
+                        moves.push({ row: row + direction, col: newCol, enPassant: true });
+                    }
+                }
+            }
+            
+            return moves;
+        }
+
+        // 马的移动
+        function getKnightMoves(row, col, color) {
+            const moves = [];
+            const deltas = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+            
+            for (const [dr, dc] of deltas) {
+                const newRow = row + dr;
+                const newCol = col + dc;
+                if (isValidSquare(newRow, newCol)) {
+                    const target = board[newRow][newCol];
+                    if (!target || target.color !== color) {
+                        moves.push({ row: newRow, col: newCol });
+                    }
+                }
+            }
+            
+            return moves;
+        }
+
+        // 象的移动
+        function getBishopMoves(row, col, color) {
+            return getSlidingMoves(row, col, color, [[-1,-1],[-1,1],[1,-1],[1,1]]);
+        }
+
+        // 车的移动
+        function getRookMoves(row, col, color) {
+            return getSlidingMoves(row, col, color, [[-1,0],[1,0],[0,-1],[0,1]]);
+        }
+
+        // 滑动棋子的通用移动
+        function getSlidingMoves(row, col, color, directions) {
+            const moves = [];
+            
+            for (const [dr, dc] of directions) {
+                let newRow = row + dr;
+                let newCol = col + dc;
+                
+                while (isValidSquare(newRow, newCol)) {
+                    const target = board[newRow][newCol];
+                    if (!target) {
+                        moves.push({ row: newRow, col: newCol });
+                    } else {
+                        if (target.color !== color) {
+                            moves.push({ row: newRow, col: newCol });
+                        }
+                        break;
+                    }
+                    newRow += dr;
+                    newCol += dc;
+                }
+            }
+            
+            return moves;
+        }
+
+        // 王的移动
+        function getKingMoves(row, col, color) {
+            const moves = [];
+            const deltas = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+            
+            for (const [dr, dc] of deltas) {
+                const newRow = row + dr;
+                const newCol = col + dc;
+                if (isValidSquare(newRow, newCol)) {
+                    const target = board[newRow][newCol];
+                    if (!target || target.color !== color) {
+                        moves.push({ row: newRow, col: newCol });
+                    }
+                }
+            }
+            
+            // 王车易位
+            if (!isInCheck(color)) {
+                // 王翼易位
+                if (canCastle(color, 'kingSide')) {
+                    moves.push({ row, col: col + 2, castling: 'kingSide' });
+                }
+                // 后翼易位
+                if (canCastle(color, 'queenSide')) {
+                    moves.push({ row, col: col - 2, castling: 'queenSide' });
+                }
+            }
+            
+            return moves;
+        }
+
+        // 检查是否可以易位
+        function canCastle(color, side) {
+            const row = color === 'white' ? 7 : 0;
+            const rights = castlingRights[color][side];
+            
+            if (!rights) return false;
+            
+            if (side === 'kingSide') {
+                // 检查f和g格是否为空
+                if (board[row][5] || board[row][6]) return false;
+                // 检查王经过的格子是否被攻击
+                if (isSquareAttacked(row, 5, color) || isSquareAttacked(row, 6, color)) return false;
+            } else {
+                // 检查b、c、d格是否为空
+                if (board[row][1] || board[row][2] || board[row][3]) return false;
+                // 检查王经过的格子是否被攻击
+                if (isSquareAttacked(row, 2, color) || isSquareAttacked(row, 3, color)) return false;
+            }
+            
+            return true;
+        }
+
+        // 检查格子是否有效
+        function isValidSquare(row, col) {
+            return row >= 0 && row < 8 && col >= 0 && col < 8;
+        }
+
+        // 检查某色是否被将军
+        function isInCheck(color) {
+            const kingPos = kingPositions[color];
+            return isSquareAttacked(kingPos.row, kingPos.col, color);
+        }
+
+        // 检查格子是否被某方攻击
+        function isSquareAttacked(row, col, defendingColor) {
+            const attackingColor = defendingColor === 'white' ? 'black' : 'white';
+            
+            // 检查所有对方棋子的攻击范围
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = board[r][c];
+                    if (piece && piece.color === attackingColor) {
+                        // 特殊处理兵（因为兵的吃子方向是斜向）
+                        if (piece.type === 'pawn') {
+                            const direction = attackingColor === 'white' ? -1 : 1;
+                            if (r + direction === row && Math.abs(c - col) === 1) {
+                                return true;
+                            }
+                        } else if (piece.type === 'king') {
+                            if (Math.abs(r - row) <= 1 && Math.abs(c - col) <= 1) {
+                                return true;
+                            }
+                        } else {
+                            const moves = getPossibleMoves(r, c);
+                            if (moves.some(m => m.row === row && m.col === col)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        // 执行移动
+        function makeMove(from, to, promotionPiece = null) {
+            const piece = board[from.row][from.col];
+            let captured = board[to.row][to.col];
+            let moveNotation = '';
+            
+            // 吃过路兵
+            if (to.enPassant) {
+                const capturedRow = currentPlayer === 'white' ? to.row + 1 : to.row - 1;
+                captured = board[capturedRow][to.col];
+                board[capturedRow][to.col] = null;
+            }
+            
+            // 记录吃子
+            if (captured) {
+                if (currentPlayer === 'white') {
+                    capturedByWhite.push(captured);
+                } else {
+                    capturedByBlack.push(captured);
+                }
+            }
+            
+            // 王车易位
+            if (to.castling) {
+                const row = from.row;
+                if (to.castling === 'kingSide') {
+                    board[row][5] = board[row][7];
+                    board[row][7] = null;
+                    moveNotation = 'O-O';
+                } else {
+                    board[row][3] = board[row][0];
+                    board[row][0] = null;
+                    moveNotation = 'O-O-O';
+                }
+                castlingRights[currentPlayer].kingSide = false;
+                castlingRights[currentPlayer].queenSide = false;
+            }
+            
+            // 更新王的易位权利
+            if (piece.type === 'king') {
+                castlingRights[currentPlayer].kingSide = false;
+                castlingRights[currentPlayer].queenSide = false;
+            }
+            if (piece.type === 'rook') {
+                if (from.col === 0) castlingRights[currentPlayer].queenSide = false;
+                if (from.col === 7) castlingRights[currentPlayer].kingSide = false;
+            }
+            
+            // 移动棋子
+            board[to.row][to.col] = piece;
+            board[from.row][from.col] = null;
+            
+            // 升变
+            if (promotionPiece) {
+                board[to.row][to.col] = { color: currentPlayer, type: promotionPiece };
+            }
+            
+            // 更新王的位置
+            if (piece.type === 'king') {
+                kingPositions[currentPlayer] = { row: to.row, col: to.col };
+            }
+            
+            // 设置吃过路兵目标
+            if (piece.type === 'pawn' && Math.abs(to.row - from.row) === 2) {
+                enPassantTarget = {
+                    row: (from.row + to.row) / 2,
+                    col: from.col
+                };
+            } else {
+                enPassantTarget = null;
+            }
+            
+            // 生成记谱
+            if (!to.castling) {
+                moveNotation = getMoveNotation(piece, from, to, captured, promotionPiece);
+            }
+            
+            // 记录移动
+            lastMove = { from, to };
+            moveHistory.push({
+                piece: piece,
+                from: from,
+                to: to,
+                notation: moveNotation,
+                captured: captured,
+                board: JSON.parse(JSON.stringify(board)),
+                castlingRights: JSON.parse(JSON.stringify(castlingRights)),
+                kingPositions: JSON.parse(JSON.stringify(kingPositions)),
+                enPassantTarget: enPassantTarget,
+                currentPlayer: currentPlayer
+            });
+            
+            // 切换玩家
+            currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+            
+            // 检查游戏结束
+            checkGameEnd();
+            
+            // 重置选择
+            selectedSquare = null;
+            validMoves = [];
+            
+            renderBoard();
+            updateStatus();
+            updateCapturedPieces();
+            updateMoveList();
+        }
+
+        // 生成代数记谱
+        function getMoveNotation(piece, from, to, captured, promotion) {
+            let notation = '';
+            
+            // 棋子符号
+            if (piece.type !== 'pawn') {
+                notation += piece.type.charAt(0).toUpperCase();
+            }
+            
+            // 文件（列）
+            if (piece.type === 'pawn' && captured) {
+                notation += String.fromCharCode(97 + from.col);
+            }
+            
+            // 吃子
+            if (captured) {
+                notation += 'x';
+            }
+            
+            // 目标位置
+            notation += String.fromCharCode(97 + to.col);
+            notation += (8 - to.row);
+            
+            // 升变
+            if (promotion) {
+                notation += '=' + promotion.charAt(0).toUpperCase();
+            }
+            
+            return notation;
+        }
+
+        // 检查游戏结束
+        function checkGameEnd() {
+            // 检查是否有任何合法移动
+            const hasValidMoves = hasAnyValidMoves(currentPlayer);
+            const inCheck = isInCheck(currentPlayer);
+            
+            if (!hasValidMoves) {
+                if (inCheck) {
+                    // 将杀
+                    const winner = currentPlayer === 'white' ? '黑方' : '白方';
+                    showGameOver(`${winner}获胜！`, `恭喜${winner}通过将杀赢得了比赛！`);
+                } else {
+                    // 逼和
+                    showGameOver('和棋', '逼和 - 双方都无法将死对方');
+                }
+                return;
+            }
+            
+            // 检查 insufficient material
+            if (isInsufficientMaterial()) {
+                showGameOver('和棋', '材料不足 - 双方都无法将死对方');
+            }
+        }
+
+        // 检查是否有任何合法移动
+        function hasAnyValidMoves(color) {
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = board[row][col];
+                    if (piece && piece.color === color) {
+                        const moves = getValidMoves(row, col);
+                        if (moves.length > 0) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // 检查材料不足
+        function isInsufficientMaterial() {
+            const pieces = { white: [], black: [] };
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = board[row][col];
+                    if (piece && piece.type !== 'king') {
+                        pieces[piece.color].push({ ...piece, row, col });
+                    }
+                }
+            }
+            
+            // 王对王
+            if (pieces.white.length === 0 && pieces.black.length === 0) {
+                return true;
+            }
+            
+            // 王和象对王，或王和马对王
+            if ((pieces.white.length === 0 && pieces.black.length === 1) ||
+                (pieces.black.length === 0 && pieces.white.length === 1)) {
+                const lonePiece = pieces.white.length === 1 ? pieces.white[0] : pieces.black[0];
+                if (lonePiece.type === 'bishop' || lonePiece.type === 'knight') {
+                    return true;
+                }
+            }
+            
+            // 双方各只有一个象，且同色格
+            if (pieces.white.length === 1 && pieces.black.length === 1 &&
+                pieces.white[0].type === 'bishop' && pieces.black[0].type === 'bishop') {
+                const whiteBishopSquare = pieces.white[0].row + pieces.white[0].col;
+                const blackBishopSquare = pieces.black[0].row + pieces.black[0].col;
+                if (whiteBishopSquare % 2 === blackBishopSquare % 2) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        // 显示升变对话框
+        function showPromotionDialog() {
+            const modal = document.getElementById('promotionModal');
+            const options = document.getElementById('promotionOptions');
+            options.innerHTML = '';
+            
+            const pieces = ['queen', 'rook', 'bishop', 'knight'];
+            pieces.forEach(type => {
+                const pieceEl = document.createElement('span');
+                pieceEl.className = 'promotion-piece';
+                pieceEl.textContent = PIECES[currentPlayer][type];
+                pieceEl.onclick = () => {
+                    completePromotion(type);
+                };
+                options.appendChild(pieceEl);
+            });
+            
+            modal.classList.add('active');
+        }
+
+        // 完成升变
+        function completePromotion(pieceType) {
+            document.getElementById('promotionModal').classList.remove('active');
+            makeMove(pendingPromotion.from, pendingPromotion.to, pieceType);
+            pendingPromotion = null;
+        }
+
+        // 显示游戏结束
+        function showGameOver(title, message) {
+            document.getElementById('gameOverTitle').textContent = title;
+            document.getElementById('gameOverMessage').textContent = message;
+            document.getElementById('gameOverModal').classList.add('active');
+        }
+
+        // 关闭游戏结束对话框
+        function closeGameOverModal() {
+            document.getElementById('gameOverModal').classList.remove('active');
+        }
+
+        // 更新状态
+        function updateStatus() {
+            const statusEl = document.getElementById('status');
+            const turnPieceEl = document.getElementById('turnPiece');
+            
+            if (isInCheck(currentPlayer)) {
+                statusEl.textContent = (currentPlayer === 'white' ? '白方' : '黑方') + '被将军！';
+                statusEl.style.color = '#ef4444';
+            } else {
+                statusEl.textContent = (currentPlayer === 'white' ? '白方' : '黑方') + '回合';
+                statusEl.style.color = '#fff';
+            }
+            
+            turnPieceEl.textContent = PIECES[currentPlayer].king;
+        }
+
+        // 更新吃子显示
+        function updateCapturedPieces() {
+            const whiteEl = document.getElementById('capturedByWhite');
+            const blackEl = document.getElementById('capturedByBlack');
+            
+            whiteEl.innerHTML = capturedByWhite.map(p => 
+                `<span class="captured-piece">${PIECES.black[p.type]}</span>`
+            ).join('');
+            
+            blackEl.innerHTML = capturedByBlack.map(p => 
+                `<span class="captured-piece">${PIECES.white[p.type]}</span>`
+            ).join('');
+        }
+
+        // 更新走棋记录
+        function updateMoveList() {
+            const moveListEl = document.getElementById('moveList');
+            moveListEl.innerHTML = '';
+            
+            for (let i = 0; i < moveHistory.length; i += 2) {
+                const moveNum = document.createElement('span');
+                moveNum.className = 'move-number';
+                moveNum.textContent = Math.floor(i / 2) + 1 + '.';
+                moveListEl.appendChild(moveNum);
+                
+                const whiteMove = document.createElement('span');
+                whiteMove.className = 'move-white';
+                whiteMove.textContent = moveHistory[i].notation;
+                moveListEl.appendChild(whiteMove);
+                
+                if (moveHistory[i + 1]) {
+                    const blackMove = document.createElement('span');
+                    blackMove.className = 'move-black';
+                    blackMove.textContent = moveHistory[i + 1].notation;
+                    moveListEl.appendChild(blackMove);
+                }
+            }
+            
+            // 滚动到底部
+            moveListEl.parentElement.scrollTop = moveListEl.parentElement.scrollHeight;
+        }
+
+        // 悔棋
+        function undoMove() {
+            if (moveHistory.length < 2) return;
+            
+            // 回退两步（双方各一步）
+            moveHistory.pop(); // 撤销当前玩家的最后一步
+            const lastState = moveHistory.pop(); // 撤销对手的最后一步
+            
+            // 恢复状态
+            board = lastState.board;
+            castlingRights = lastState.castlingRights;
+            kingPositions = lastState.kingPositions;
+            enPassantTarget = lastState.enPassantTarget;
+            currentPlayer = lastState.currentPlayer;
+            
+            // 恢复吃子记录
+            capturedByWhite = [];
+            capturedByBlack = [];
+            for (const move of moveHistory) {
+                if (move.captured) {
+                    if (move.piece.color === 'white') {
+                        capturedByWhite.push(move.captured);
+                    } else {
+                        capturedByBlack.push(move.captured);
+                    }
+                }
+            }
+            
+            // 更新上一步
+            if (moveHistory.length > 0) {
+                lastMove = { 
+                    from: moveHistory[moveHistory.length - 1].from,
+                    to: moveHistory[moveHistory.length - 1].to
+                };
+            } else {
+                lastMove = null;
+            }
+            
+            selectedSquare = null;
+            validMoves = [];
+            
+            renderBoard();
+            updateStatus();
+            updateCapturedPieces();
+            updateMoveList();
+        }
+
+        // 新游戏
+        function resetGame() {
+            initBoard();
+        }
+
+        // 翻转棋盘
+        function flipBoard() {
+            isFlipped = !isFlipped;
+            renderBoard();
+        }
+
+        // 初始化
+        initBoard();
+    </script>
+</body>
+</html>
