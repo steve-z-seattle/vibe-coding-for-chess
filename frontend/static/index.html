@@ -952,6 +952,9 @@
             playerColor: 'white',  // 玩家颜色（人机模式下）
             aiDifficulty: 2  // AI 难度等级
         };
+        
+        // AI 思考状态标志
+        let isAIThinking = false;
 
         // 初始化
         async function init() {
@@ -1235,6 +1238,7 @@
                     // 人机模式下，玩家走完后自动触发 AI 走棋
                     if (gameConfig.mode === 'pve' && 
                         !gameState.game_over && 
+                        !isAIThinking &&
                         gameState.current_player !== gameConfig.playerColor) {
                         setTimeout(() => requestAIMove(), 500);
                     }
@@ -1280,8 +1284,9 @@
 
         // 请求 AI 走棋
         async function requestAIMove() {
-            if (!gameState || gameState.game_over) return;
+            if (!gameState || gameState.game_over || isAIThinking) return;
             
+            isAIThinking = true;
             document.getElementById('loading').classList.add('active');
             
             try {
@@ -1313,6 +1318,14 @@
                     updateCapturedPieces();
                     updateMoveList();
                     checkGameEnd();
+                } else if (result.message && result.message.includes("retry")) {
+                    // 游戏状态被其他请求改变，稍等后刷新状态
+                    console.log("Game state changed, refreshing...");
+                    setTimeout(async () => {
+                        await loadGameState();
+                        renderBoard();
+                        updateStatus();
+                    }, 500);
                 } else {
                     showError(result.message);
                 }
@@ -1320,6 +1333,7 @@
                 console.error('AI move failed:', error);
                 showError('AI 走棋失败，请重试');
             } finally {
+                isAIThinking = false;
                 document.getElementById('loading').classList.remove('active');
             }
         }
@@ -1468,6 +1482,7 @@
                 });
                 
                 if (response.ok) {
+                    isAIThinking = false;
                     gameState = await response.json();
                     selectedSquare = null;
                     validMoves = [];

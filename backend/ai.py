@@ -1,6 +1,6 @@
-"""AI for chess game using Minimax with Alpha-Beta pruning."""
-import copy
-from typing import Optional, Tuple, List
+"""AI for chess game using Minimax with Alpha-Beta pruning and Transposition Table."""
+import time
+from typing import Optional, Tuple, List, Dict
 from chess_game import ChessGame
 from models import Position, Piece, ValidMove
 
@@ -90,36 +90,81 @@ POSITION_TABLES = {
     'king': KING_MIDDLE_TABLE
 }
 
+# Transposition Table Entry Types
+EXACT = 0
+LOWERBOUND = 1
+UPPERBOUND = 2
+
+
+class TranspositionEntry:
+    """Entry in the transposition table."""
+    def __init__(self, depth: int, value: float, flag: int, best_move=None):
+        self.depth = depth
+        self.value = value
+        self.flag = flag
+        self.best_move = best_move
+
 
 class ChessAI:
-    """Chess AI using Minimax with Alpha-Beta pruning."""
+    """Chess AI using Minimax with Alpha-Beta pruning and Transposition Table."""
 
-    def __init__(self, depth: int = 3):
-        self.depth = depth
+    def __init__(self, depth: int = 3, max_time: float = 3.0):
+        self.max_depth = depth
+        self.max_time = max_time  # Maximum thinking time in seconds
         self.nodes_evaluated = 0
+        self.transposition_table: Dict[int, TranspositionEntry] = {}
+        self.start_time = 0
+        self.time_limit_reached = False
+        self.killer_moves = [[None, None] for _ in range(20)]  # Killer heuristic
 
     def get_best_move(self, game: ChessGame) -> Optional[Tuple[int, int, int, int]]:
-        """Get the best move for the current player."""
+        """Get the best move for the current player using iterative deepening."""
         self.nodes_evaluated = 0
+        self.transposition_table.clear()
+        self.start_time = time.time()
+        self.time_limit_reached = False
+        self.killer_moves = [[None, None] for _ in range(20)]
         
+        color = game.current_player
+        best_move = None
+        
+        # Iterative deepening - search progressively deeper until time runs out
+        for depth in range(1, self.max_depth + 1):
+            if time.time() - self.start_time > self.max_time * 0.8:
+                break
+                
+            try:
+                move = self._search_at_depth(game, depth, color)
+                if move:
+                    best_move = move
+            except TimeoutError:
+                break
+        
+        return best_move
+
+    def _search_at_depth(self, game: ChessGame, depth: int, color: str) -> Optional[Tuple[int, int, int, int]]:
+        """Search at a specific depth."""
         best_move = None
         best_value = float('-inf')
         alpha = float('-inf')
         beta = float('inf')
         
-        color = game.current_player
-        moves = self._get_all_moves(game, color)
-        
-        # Sort moves for better pruning (captures first)
-        moves.sort(key=lambda m: self._move_priority(game, m), reverse=True)
+        moves = self._get_all_moves_ordered(game, color, 0)
         
         for from_row, from_col, to_row, to_col, move_info in moves:
-            # Make move
-            new_game = self._simulate_move(game, from_row, from_col, to_row, to_col, move_info)
-            if new_game is None:
+            if self._check_timeout():
+                raise TimeoutError()
+            
+            # Make move incrementally (much faster than deepcopy)
+            undo_info = self._make_move_fast(game, from_row, from_col, to_row, to_col, move_info)
+            if undo_info is None:
                 continue
             
-            value = self._minimax(new_game, self.depth - 1, alpha, beta, False, color)
+            try:
+                value = self._minimax(game, depth - 1, alpha, beta, False, color, 1)
+            finally:
+                # Always undo the move, even if TimeoutError is raised
+                self._undo_move_fast(game, undo_info)
             
             if value > best_value:
                 best_value = value
@@ -129,8 +174,15 @@ class ChessAI:
         
         return best_move
 
-    def _get_all_moves(self, game: ChessGame, color: str) -> List[Tuple[int, int, int, int, ValidMove]]:
-        """Get all valid moves for a color."""
+    def _check_timeout(self) -> bool:
+        """Check if time limit is approaching."""
+        if time.time() - self.start_time > self.max_time:
+            self.time_limit_reached = True
+            return True
+        return False
+
+    def _get_all_moves_ordered(self, game: ChessGame, color: str, depth: int) -> List:
+        """Get all valid moves with better ordering for alpha-beta pruning."""
         moves = []
         for row in range(8):
             for col in range(8):
@@ -139,123 +191,258 @@ class ChessAI:
                     valid_moves = game.get_valid_moves(row, col)
                     for move in valid_moves:
                         moves.append((row, col, move.row, move.col, move))
+        
+        # Enhanced move ordering
+        def move_score(m):
+            from_row, from_col, to_row, to_col, move_info = m
+            score = 0
+            
+            # 1. TT move (best move from transposition table)
+            board_hash = self._hash_board(game)
+            if board_hash in self.transposition_table:
+                entry = self.transposition_table[board_hash]
+                if entry.best_move == m[:4]:
+                    score += 100000
+            
+            # 2. MVV-LVA: Most Valuable Victim - Least Valuable Aggressor
+            target = game.board[to_row][to_col]
+            if target:
+                attacker = game.board[from_row][from_col]
+                score += 10000 + PIECE_VALUES[target.type] - PIECE_VALUES[attacker.type] // 10
+            
+            # 3. Killer heuristic
+            if depth < len(self.killer_moves):
+                if self.killer_moves[depth][0] == m[:4]:
+                    score += 9000
+                elif self.killer_moves[depth][1] == m[:4]:
+                    score += 8000
+            
+            # 4. Promotion bonus
+            if move_info and hasattr(move_info, 'promotion'):
+                score += 5000
+            
+            return score
+        
+        moves.sort(key=move_score, reverse=True)
         return moves
 
-    def _move_priority(self, game: ChessGame, move: Tuple[int, int, int, int, ValidMove]) -> int:
-        """Calculate move priority for move ordering."""
-        from_row, from_col, to_row, to_col, move_info = move
-        target = game.board[to_row][to_col]
-        if target:
-            attacker = game.board[from_row][from_col]
-            return PIECE_VALUES[target.type] - PIECE_VALUES[attacker.type] // 10
-        return 0
+    def _hash_board(self, game: ChessGame) -> int:
+        """Create a simple hash of the board state."""
+        h = 0
+        for row in range(8):
+            for col in range(8):
+                piece = game.board[row][col]
+                if piece:
+                    h ^= hash((row, col, piece.color, piece.type)) * 31
+        h ^= hash((game.current_player, 
+                   game.castling_rights['white']['kingSide'],
+                   game.castling_rights['white']['queenSide'],
+                   game.castling_rights['black']['kingSide'],
+                   game.castling_rights['black']['queenSide']))
+        return h
 
-    def _simulate_move(self, game: ChessGame, from_row: int, from_col: int,
-                       to_row: int, to_col: int, move_info: ValidMove) -> Optional[ChessGame]:
-        """Simulate a move and return a new game state."""
-        new_game = copy.deepcopy(game)
-        
-        piece = new_game.board[from_row][from_col]
+    def _make_move_fast(self, game: ChessGame, from_row: int, from_col: int,
+                        to_row: int, to_col: int, move_info: ValidMove) -> Optional[dict]:
+        """Make a move and return undo information (much faster than deepcopy)."""
+        piece = game.board[from_row][from_col]
         if not piece:
             return None
         
+        # Save state for undo
+        undo_info = {
+            'from_row': from_row,
+            'from_col': from_col,
+            'to_row': to_row,
+            'to_col': to_col,
+            'piece': piece,
+            'captured': game.board[to_row][to_col],
+            'en_passant_target': game.en_passant_target,
+            'castling_rights': {
+                'white': dict(game.castling_rights['white']),
+                'black': dict(game.castling_rights['black'])
+            },
+            'king_positions': {
+                'white': Position(row=game.king_positions['white'].row, col=game.king_positions['white'].col),
+                'black': Position(row=game.king_positions['black'].row, col=game.king_positions['black'].col)
+            },
+            'current_player': game.current_player,
+            'en_passant_capture': None
+        }
+        
         # Handle en passant
-        if move_info.en_passant:
-            captured_row = to_row + 1 if new_game.current_player == 'white' else to_row - 1
-            new_game.board[captured_row][to_col] = None
+        if move_info and move_info.en_passant:
+            captured_row = to_row + 1 if game.current_player == 'white' else to_row - 1
+            undo_info['en_passant_capture'] = (captured_row, to_col, game.board[captured_row][to_col])
+            game.board[captured_row][to_col] = None
         
         # Handle castling
-        if move_info.castling:
+        if move_info and move_info.castling:
             if move_info.castling == 'kingSide':
-                new_game.board[from_row][5] = new_game.board[from_row][7]
-                new_game.board[from_row][7] = None
+                undo_info['castled_rook_from'] = (from_row, 7)
+                undo_info['castled_rook_to'] = (from_row, 5)
+                game.board[from_row][5] = game.board[from_row][7]
+                game.board[from_row][7] = None
             else:
-                new_game.board[from_row][3] = new_game.board[from_row][0]
-                new_game.board[from_row][0] = None
-            new_game.castling_rights[new_game.current_player]['kingSide'] = False
-            new_game.castling_rights[new_game.current_player]['queenSide'] = False
+                undo_info['castled_rook_from'] = (from_row, 0)
+                undo_info['castled_rook_to'] = (from_row, 3)
+                game.board[from_row][3] = game.board[from_row][0]
+                game.board[from_row][0] = None
+            game.castling_rights[game.current_player]['kingSide'] = False
+            game.castling_rights[game.current_player]['queenSide'] = False
         
         # Update castling rights
         if piece.type == 'king':
-            new_game.castling_rights[new_game.current_player]['kingSide'] = False
-            new_game.castling_rights[new_game.current_player]['queenSide'] = False
+            game.castling_rights[game.current_player]['kingSide'] = False
+            game.castling_rights[game.current_player]['queenSide'] = False
         if piece.type == 'rook':
             if from_col == 0:
-                new_game.castling_rights[new_game.current_player]['queenSide'] = False
+                game.castling_rights[game.current_player]['queenSide'] = False
             if from_col == 7:
-                new_game.castling_rights[new_game.current_player]['kingSide'] = False
+                game.castling_rights[game.current_player]['kingSide'] = False
         
         # Move the piece
-        captured = new_game.board[to_row][to_col]
-        new_game.board[to_row][to_col] = piece
-        new_game.board[from_row][from_col] = None
+        game.board[to_row][to_col] = piece
+        game.board[from_row][from_col] = None
         
         # Handle pawn promotion (auto-promote to queen for AI)
         if piece.type == 'pawn' and (to_row == 0 or to_row == 7):
-            new_game.board[to_row][to_col] = Piece(color=piece.color, type='queen')
+            undo_info['promoted'] = True
+            game.board[to_row][to_col] = Piece(color=piece.color, type='queen')
         
         # Update king position
         if piece.type == 'king':
-            new_game.king_positions[piece.color] = Position(row=to_row, col=to_col)
+            game.king_positions[piece.color] = Position(row=to_row, col=to_col)
         
         # Update en passant target
         if piece.type == 'pawn' and abs(to_row - from_row) == 2:
-            new_game.en_passant_target = Position(row=(from_row + to_row) // 2, col=from_col)
+            game.en_passant_target = Position(row=(from_row + to_row) // 2, col=from_col)
         else:
-            new_game.en_passant_target = None
+            game.en_passant_target = None
         
         # Switch player
-        new_game.current_player = 'black' if new_game.current_player == 'white' else 'white'
+        game.current_player = 'black' if game.current_player == 'white' else 'white'
         
-        return new_game
+        return undo_info
+
+    def _undo_move_fast(self, game: ChessGame, undo_info: dict):
+        """Undo a move using stored information."""
+        # Switch back player
+        game.current_player = undo_info['current_player']
+        
+        from_row, from_col = undo_info['from_row'], undo_info['from_col']
+        to_row, to_col = undo_info['to_row'], undo_info['to_col']
+        
+        # Undo promotion
+        if undo_info.get('promoted'):
+            game.board[from_row][from_col] = undo_info['piece']
+        else:
+            game.board[from_row][from_col] = undo_info['piece']
+        
+        game.board[to_row][to_col] = undo_info['captured']
+        
+        # Undo en passant capture
+        if undo_info['en_passant_capture']:
+            captured_row, captured_col, captured_piece = undo_info['en_passant_capture']
+            game.board[captured_row][captured_col] = captured_piece
+        
+        # Undo castling
+        if 'castled_rook_from' in undo_info:
+            rook_from_row, rook_from_col = undo_info['castled_rook_from']
+            rook_to_row, rook_to_col = undo_info['castled_rook_to']
+            game.board[rook_from_row][rook_from_col] = game.board[rook_to_row][rook_to_col]
+            game.board[rook_to_row][rook_to_col] = None
+        
+        # Restore state
+        game.en_passant_target = undo_info['en_passant_target']
+        game.castling_rights = undo_info['castling_rights']
+        game.king_positions = undo_info['king_positions']
 
     def _minimax(self, game: ChessGame, depth: int, alpha: float, beta: float,
-                 is_minimizing: bool, maximizing_color: str) -> float:
-        """Minimax algorithm with Alpha-Beta pruning."""
+                 is_minimizing: bool, maximizing_color: str, current_depth: int) -> float:
+        """Minimax algorithm with Alpha-Beta pruning and Transposition Table."""
         self.nodes_evaluated += 1
+        
+        if self._check_timeout():
+            raise TimeoutError()
+        
+        # Transposition Table Lookup
+        board_hash = self._hash_board(game)
+        tt_entry = self.transposition_table.get(board_hash)
+        if tt_entry and tt_entry.depth >= depth:
+            if tt_entry.flag == EXACT:
+                return tt_entry.value
+            elif tt_entry.flag == LOWERBOUND and tt_entry.value >= beta:
+                return tt_entry.value
+            elif tt_entry.flag == UPPERBOUND and tt_entry.value <= alpha:
+                return tt_entry.value
         
         if depth == 0:
             return self._evaluate_board(game, maximizing_color)
         
         current_color = game.current_player
-        moves = self._get_all_moves(game, current_color)
-        
-        # Sort moves for better pruning
-        moves.sort(key=lambda m: self._move_priority(game, m), reverse=True)
+        moves = self._get_all_moves_ordered(game, current_color, current_depth)
         
         if not moves:
             # Checkmate or stalemate
             if game.is_in_check(current_color):
                 if current_color == maximizing_color:
-                    return float('-inf')
+                    return float('-inf') + current_depth  # Prefer faster checkmate
                 else:
-                    return float('inf')
+                    return float('inf') - current_depth
             return 0  # Stalemate
         
-        if is_minimizing:
-            min_eval = float('inf')
-            for from_row, from_col, to_row, to_col, move_info in moves:
-                new_game = self._simulate_move(game, from_row, from_col, to_row, to_col, move_info)
-                if new_game is None:
-                    continue
-                eval = self._minimax(new_game, depth - 1, alpha, beta, False, maximizing_color)
-                min_eval = min(min_eval, eval)
+        best_value = float('inf') if is_minimizing else float('-inf')
+        best_move = None
+        original_alpha = alpha
+        original_beta = beta
+        
+        for from_row, from_col, to_row, to_col, move_info in moves:
+            undo_info = self._make_move_fast(game, from_row, from_col, to_row, to_col, move_info)
+            if undo_info is None:
+                continue
+            
+            try:
+                eval = self._minimax(game, depth - 1, alpha, beta, not is_minimizing, maximizing_color, current_depth + 1)
+            finally:
+                # Always undo the move, even if TimeoutError is raised
+                self._undo_move_fast(game, undo_info)
+            
+            if is_minimizing:
+                if eval < best_value:
+                    best_value = eval
+                    best_move = (from_row, from_col, to_row, to_col)
                 beta = min(beta, eval)
                 if beta <= alpha:
+                    # Killer move heuristic
+                    if current_depth < len(self.killer_moves):
+                        if self.killer_moves[current_depth][0] != best_move:
+                            self.killer_moves[current_depth][1] = self.killer_moves[current_depth][0]
+                            self.killer_moves[current_depth][0] = best_move
                     break
-            return min_eval
-        else:
-            max_eval = float('-inf')
-            for from_row, from_col, to_row, to_col, move_info in moves:
-                new_game = self._simulate_move(game, from_row, from_col, to_row, to_col, move_info)
-                if new_game is None:
-                    continue
-                eval = self._minimax(new_game, depth - 1, alpha, beta, True, maximizing_color)
-                max_eval = max(max_eval, eval)
+            else:
+                if eval > best_value:
+                    best_value = eval
+                    best_move = (from_row, from_col, to_row, to_col)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
+                    # Killer move heuristic
+                    if current_depth < len(self.killer_moves):
+                        if self.killer_moves[current_depth][0] != best_move:
+                            self.killer_moves[current_depth][1] = self.killer_moves[current_depth][0]
+                            self.killer_moves[current_depth][0] = best_move
                     break
-            return max_eval
+        
+        # Store in Transposition Table
+        if best_value <= original_alpha:
+            flag = UPPERBOUND
+        elif best_value >= original_beta:
+            flag = LOWERBOUND
+        else:
+            flag = EXACT
+        
+        self.transposition_table[board_hash] = TranspositionEntry(depth, best_value, flag, best_move)
+        
+        return best_value
 
     def _evaluate_board(self, game: ChessGame, color: str) -> float:
         """Evaluate the board from the perspective of the given color."""
@@ -271,7 +458,6 @@ class ChessAI:
                     position_value = 0
                     if piece.type in POSITION_TABLES:
                         table = POSITION_TABLES[piece.type]
-                        # Mirror the table for black pieces
                         if piece.color == 'white':
                             position_value = table[row][col]
                         else:
@@ -282,14 +468,25 @@ class ChessAI:
                     else:
                         score -= value + position_value
         
-        # Mobility bonus
-        own_moves = len(self._get_all_moves(game, color))
+        # Mobility bonus (simplified - count legal moves)
+        own_moves = 0
+        opp_moves = 0
         opponent = 'black' if color == 'white' else 'white'
-        opp_moves = len(self._get_all_moves(game, opponent))
-        score += (own_moves - opp_moves) * 10
+        
+        for row in range(8):
+            for col in range(8):
+                piece = game.board[row][col]
+                if piece:
+                    moves = len(game.get_valid_moves(row, col))
+                    if piece.color == color:
+                        own_moves += moves
+                    else:
+                        opp_moves += moves
+        
+        score += (own_moves - opp_moves) * 5
         
         # Check bonus
-        if game.is_in_check(opponent):
+        if game.is_in_check('black' if color == 'white' else 'white'):
             score += 50
         
         return score
