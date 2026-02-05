@@ -1373,6 +1373,53 @@
             ).join('');
         }
 
+        // 棋子符号映射（代数记谱法）
+        const PIECE_SYMBOLS = {
+            'king': 'K',
+            'queen': 'Q',
+            'rook': 'R',
+            'bishop': 'B',
+            'knight': 'N',
+            'pawn': ''  // 兵不写符号
+        };
+
+        // 将走棋数据转换为标准代数记谱法
+        function moveToAlgebraic(moveData, index) {
+            if (!moveData) return '';
+            
+            const piece = moveData.piece;
+            const fromCol = moveData.from.col;
+            const fromRow = moveData.from.row;
+            const toCol = moveData.to.col;
+            const toRow = moveData.to.row;
+            
+            const pieceSymbol = PIECE_SYMBOLS[piece.type] || '';
+            const toSquare = String.fromCharCode(97 + toCol) + (8 - toRow);
+            
+            // 检查是否是吃子
+            const isCapture = moveData.captured !== null;
+            const captureSymbol = isCapture ? 'x' : '';
+            
+            // 王车易位特殊处理
+            if (piece.type === 'king' && Math.abs(toCol - fromCol) === 2) {
+                return toCol > fromCol ? 'O-O' : 'O-O-O';
+            }
+            
+            // 兵的特殊处理
+            if (piece.type === 'pawn') {
+                // 兵吃子时需要标明列（如 exd5）
+                if (isCapture) {
+                    const fromFile = String.fromCharCode(97 + fromCol);
+                    return fromFile + 'x' + toSquare;
+                }
+                // 兵的普通移动只写目标格
+                return toSquare;
+            }
+            
+            // 其他棋子
+            return pieceSymbol + captureSymbol + toSquare;
+        }
+
         // 更新走棋记录
         function updateMoveList() {
             if (!gameState) return;
@@ -1389,16 +1436,14 @@
                 // 白方移动
                 const whiteMove = document.createElement('span');
                 whiteMove.className = 'move-white';
-                const whiteMoveData = gameState.move_history[i];
-                whiteMove.textContent = `${whiteMoveData.piece.type} ${String.fromCharCode(97 + whiteMoveData.from.col)}${8 - whiteMoveData.from.row}-${String.fromCharCode(97 + whiteMoveData.to.col)}${8 - whiteMoveData.to.row}`;
+                whiteMove.textContent = moveToAlgebraic(gameState.move_history[i], i);
                 moveListEl.appendChild(whiteMove);
                 
                 // 黑方移动
                 if (gameState.move_history[i + 1]) {
                     const blackMove = document.createElement('span');
                     blackMove.className = 'move-black';
-                    const blackMoveData = gameState.move_history[i + 1];
-                    blackMove.textContent = `${blackMoveData.piece.type} ${String.fromCharCode(97 + blackMoveData.from.col)}${8 - blackMoveData.from.row}-${String.fromCharCode(97 + blackMoveData.to.col)}${8 - blackMoveData.to.row}`;
+                    blackMove.textContent = moveToAlgebraic(gameState.move_history[i + 1], i + 1);
                     moveListEl.appendChild(blackMove);
                 }
             }
