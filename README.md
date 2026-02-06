@@ -19,8 +19,8 @@
 ├── frontend/                # 前端文件
 │   └── static/
 │       ├── index.html       # 前端页面
-│       └── pieces/          # 棋子 SVG 图标
-├── pieces/                  # 原始棋子图标（备用）
+│       ├── pieces/          # 棋子 SVG 图标
+│       └── sounds/          # 音效文件（移动、吃子、游戏结束）
 ├── requirements.txt         # Python 依赖
 ├── run.sh                   # Linux/Mac 启动脚本
 ├── run.bat                  # Windows 启动脚本
