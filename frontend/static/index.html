@@ -61,7 +61,7 @@
             bottom: 8px;
             display: flex;
             justify-content: space-around;
-            width: 480px;
+            width: 544px;
             left: 30px;
         }
 
@@ -70,22 +70,22 @@
             display: flex;
             flex-direction: column-reverse;
             justify-content: space-around;
-            height: 480px;
+            height: 544px;
             top: 30px;
         }
 
         .board {
             display: grid;
-            grid-template-columns: repeat(8, 60px);
-            grid-template-rows: repeat(8, 60px);
+            grid-template-columns: repeat(8, 68px);
+            grid-template-rows: repeat(8, 68px);
             border: 4px solid #4a5568;
             border-radius: 4px;
             overflow: hidden;
         }
 
         .square {
-            width: 60px;
-            height: 60px;
+            width: 68px;
+            height: 68px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -139,8 +139,8 @@
         }
 
         .piece {
-            width: 50px;
-            height: 50px;
+            width: 58px;
+            height: 58px;
             user-select: none;
             cursor: grab;
             transition: transform 0.15s ease;
@@ -720,28 +720,25 @@
         /* 响应式 */
         @media (max-width: 768px) {
             .board {
-                grid-template-columns: repeat(8, 45px);
-                grid-template-rows: repeat(8, 45px);
+                grid-template-columns: repeat(8, 50px);
+                grid-template-rows: repeat(8, 50px);
             }
             .square {
-                width: 45px;
-                height: 45px;
+                width: 50px;
+                height: 50px;
             }
             .piece {
-                width: 38px;
-                height: 38px;
+                width: 42px;
+                height: 42px;
             }
             .board-wrapper {
                 padding: 25px;
             }
             .coord-file {
-                width: 360px;
+                width: 400px;
             }
             .coord-rank {
-                height: 360px;
-            }
-            h1 {
-                font-size: 1.8rem;
+                height: 400px;
             }
             .modal-dialog {
                 padding: 25px;

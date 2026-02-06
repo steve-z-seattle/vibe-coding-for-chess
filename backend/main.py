@@ -14,7 +14,7 @@ from chess_game import ChessGame
 from ai import ChessAI
 
 # Server version - increment this when making changes
-VERSION = "1.3.0"
+VERSION = "1.3.1"
 
 app = FastAPI(title="Chess API", version=VERSION)
 
