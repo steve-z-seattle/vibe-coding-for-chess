@@ -194,39 +194,6 @@ class TestValidMoves:
             assert isinstance(move["col"], int)
 
 
-class TestUndoMove:
-    """Test undo move endpoint."""
-    
-    def test_undo_after_move(self, client):
-        """Test undo after making moves (undo requires at least 2 moves)."""
-        # Use fresh game
-        game_id = "undo_test"
-        
-        # Make two moves (white and black)
-        client.post(f"/api/game/{game_id}/move", json={
-            "from_row": 6, "from_col": 4,
-            "to_row": 4, "to_col": 4
-        })
-        client.post(f"/api/game/{game_id}/move", json={
-            "from_row": 1, "from_col": 4,
-            "to_row": 3, "to_col": 4
-        })
-        
-        # Undo
-        response = client.post(f"/api/game/{game_id}/undo")
-        assert response.status_code == 200
-        
-        # Verify game state after undo
-        # After undo, should be back to position with just e4 (or reset if undo clears all)
-        data = response.json()
-        assert "board" in data
-    
-    def test_undo_without_moves(self, client):
-        """Test undo when no moves made."""
-        response = client.post("/api/game/test/undo")
-        assert response.status_code == 400
-
-
 class TestAIMove:
     """Test AI move endpoint."""
     

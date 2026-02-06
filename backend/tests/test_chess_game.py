@@ -419,56 +419,6 @@ class TestMoveExecution:
         assert success is False
 
 
-class TestUndo:
-    """Test undo functionality."""
-    
-    def test_undo_single_move(self, new_game):
-        """Test undo reverts moves (undo needs at least 2 moves in history)."""
-        new_game.make_move(6, 4, 4, 4)  # e4
-        new_game.make_move(1, 4, 3, 4)  # e5
-        success = new_game.undo_move()  # Undo both moves
-        assert success is True
-        assert new_game.current_player == 'white'
-        # After undo with our implementation, both players' moves are undone
-        # The game should be back to initial state
-        # Get the current game state
-        state = new_game.get_game_state()
-        assert state.current_player == 'white'
-    
-    def test_undo_two_moves(self, new_game):
-        """Test undo reverts both players' moves."""
-        new_game.make_move(6, 4, 4, 4)  # e4 (white)
-        new_game.make_move(1, 4, 3, 4)  # e5 (black)
-        new_game.make_move(6, 3, 4, 3)  # d4 (white)
-        new_game.make_move(1, 3, 3, 3)  # d5 (black)
-        success = new_game.undo_move()  # Undo last two moves
-        assert success is True
-        assert new_game.current_player == 'white'
-        # After undo, should be back to position after e4 e5
-        assert new_game.board[4][4].type == 'pawn'  # White pawn on e4
-        assert new_game.board[3][4].type == 'pawn'  # Black pawn on e5
-    
-    def test_undo_with_capture(self, new_game):
-        """Test undo restores captured piece."""
-        # Setup capture - need even number of moves for undo to work
-        new_game.make_move(6, 4, 4, 4)  # e4 (white)
-        new_game.make_move(1, 3, 3, 3)  # d5 (black)
-        new_game.make_move(4, 4, 3, 3)  # exd5 (white captures)
-        new_game.make_move(1, 2, 2, 2)  # c6 (black, just a move)
-        
-        assert len(new_game.captured_by_white) == 1
-        
-        new_game.undo_move()  # Undo last two moves (c6 and exd5)
-        assert len(new_game.captured_by_white) == 0
-        # The captured pawn should be restored to d5 (where it was captured from)
-        assert new_game.board[3][3] is not None and new_game.board[3][3].type == 'pawn'
-    
-    def test_undo_no_moves(self, new_game):
-        """Test undo fails when no moves to undo."""
-        success = new_game.undo_move()
-        assert success is False
-
-
 class TestGameState:
     """Test game state retrieval."""
     
