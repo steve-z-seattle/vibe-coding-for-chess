@@ -1652,9 +1652,11 @@
                 await resumeGame();
                 // 向前导航到最新位置时播放音效
                 if (isMovingForward && gameState.last_move) {
-                    // 检查最后一步是否是吃子
+                    // 检查最后一步是否是将杀或吃子
                     const lastMoveData = gameState.move_history[gameState.move_history.length - 1];
-                    if (lastMoveData && lastMoveData.captured) {
+                    if (lastMoveData && lastMoveData.is_checkmate) {
+                        playGameOverSound();
+                    } else if (lastMoveData && lastMoveData.captured) {
                         playCaptureSound();
                     } else {
                         playMoveSound();
@@ -1695,11 +1697,16 @@
                     
                     // 向前导航时播放音效
                     if (isMovingForward && historyState.last_move) {
-                        // 获取当前步的move数据来判断是否是吃子
+                        // 获取当前步的move数据
                         const currentMoveData = gameState.move_history[moveNumber - 1];
-                        if (currentMoveData && currentMoveData.captured) {
+                        if (currentMoveData && currentMoveData.is_checkmate) {
+                            // 将杀 - 播放游戏结束音效
+                            playGameOverSound();
+                        } else if (currentMoveData && currentMoveData.captured) {
+                            // 吃子
                             playCaptureSound();
                         } else {
+                            // 普通移动
                             playMoveSound();
                         }
                     }
