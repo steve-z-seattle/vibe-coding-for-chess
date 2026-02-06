@@ -818,11 +818,6 @@
                 <div class="captured-list" id="capturedByBlack"></div>
             </div>
             
-            <div class="move-history">
-                <div class="move-history-title">走棋记录</div>
-                <div class="move-list" id="moveList"></div>
-            </div>
-            
             <!-- 棋局导航 - 始终可用 -->
             <div class="review-panel" id="reviewPanel" style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
                 <div class="review-title" style="font-size: 12px; color: #a0aec0; margin-bottom: 10px; text-transform: uppercase;">棋局导航 <span style="color: #6b7280; font-size: 10px;">(← → 键盘)</span></div>
@@ -833,6 +828,11 @@
                     <button class="btn-review" onclick="goToNext()" title="下一步 (→)">▶</button>
                     <button class="btn-review" onclick="goToEnd()" title="最新 (End)">⏭</button>
                 </div>
+            </div>
+            
+            <div class="move-history">
+                <div class="move-history-title">走棋记录</div>
+                <div class="move-list" id="moveList"></div>
             </div>
             
             <div class="buttons">
@@ -1455,13 +1455,59 @@
             const whiteEl = document.getElementById('capturedByWhite');
             const blackEl = document.getElementById('capturedByBlack');
             
-            whiteEl.innerHTML = gameState.captured_by_white.map(p => 
-                `<img class="captured-piece" src="${PIECES.black[p.type]}" alt="${p.type}">`
-            ).join('');
+            // 计算每种棋子被吃掉的净数量
+            const pieceTypes = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
             
-            blackEl.innerHTML = gameState.captured_by_black.map(p => 
-                `<img class="captured-piece" src="${PIECES.white[p.type]}" alt="${p.type}">`
-            ).join('');
+            // 白方吃掉的棋子（按类型计数）
+            const whiteCounts = {};
+            pieceTypes.forEach(type => whiteCounts[type] = 0);
+            gameState.captured_by_white.forEach(p => {
+                whiteCounts[p.type] = (whiteCounts[p.type] || 0) + 1;
+            });
+            
+            // 黑方吃掉的棋子（按类型计数）
+            const blackCounts = {};
+            pieceTypes.forEach(type => blackCounts[type] = 0);
+            gameState.captured_by_black.forEach(p => {
+                blackCounts[p.type] = (blackCounts[p.type] || 0) + 1;
+            });
+            
+            // 计算净数量（相同类型的互相抵消）
+            const netWhite = {};  // 白方净吃掉的
+            const netBlack = {};  // 黑方净吃掉的
+            
+            pieceTypes.forEach(type => {
+                const diff = whiteCounts[type] - blackCounts[type];
+                if (diff > 0) {
+                    netWhite[type] = diff;
+                } else if (diff < 0) {
+                    netBlack[type] = -diff;
+                }
+            });
+            
+            // 生成HTML（按价值排序显示）
+            const pieceOrder = ['queen', 'rook', 'bishop', 'knight', 'pawn'];
+            
+            let whiteHTML = '';
+            pieceOrder.forEach(type => {
+                if (netWhite[type]) {
+                    for (let i = 0; i < netWhite[type]; i++) {
+                        whiteHTML += `<img class="captured-piece" src="${PIECES.black[type]}" alt="${type}">`;
+                    }
+                }
+            });
+            
+            let blackHTML = '';
+            pieceOrder.forEach(type => {
+                if (netBlack[type]) {
+                    for (let i = 0; i < netBlack[type]; i++) {
+                        blackHTML += `<img class="captured-piece" src="${PIECES.white[type]}" alt="${type}">`;
+                    }
+                }
+            });
+            
+            whiteEl.innerHTML = whiteHTML;
+            blackEl.innerHTML = blackHTML;
         }
 
         // 棋子符号映射（代数记谱法）
