@@ -478,7 +478,7 @@ class TestErrorHandling:
     
     def test_invalid_json(self, client):
         """Test handling of invalid JSON."""
-        response = client.post("/api/game/test/move", data="invalid json")
+        response = client.post("/api/game/test/move", content="invalid json")
         assert response.status_code == 422
     
     def test_missing_fields(self, client):

@@ -32,7 +32,7 @@
 
 ### 1. 安装依赖
 
-确保已安装 Python 3.8+，然后运行启动脚本：
+确保已安装 Python 3.12+，然后运行启动脚本：
 
 **Linux/Mac:**
 ```bash
@@ -46,8 +46,8 @@ run.bat
 
 或者手动安装：
 ```bash
-# 创建虚拟环境
-python -m venv venv
+# 创建虚拟环境（确保使用 Python 3.12+）
+python3.12 -m venv venv
 
 # 激活虚拟环境
 source venv/bin/activate  # Linux/Mac
@@ -114,7 +114,7 @@ uvicorn main:app --reload
 
 ## 技术栈
 
-- **后端**: FastAPI, Python 3.8+
+- **后端**: FastAPI, Python 3.12+
 - **前端**: HTML5, CSS3, JavaScript (Vanilla)
 - **通信**: RESTful API (HTTP)
 
