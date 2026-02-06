@@ -14,7 +14,7 @@ from chess_game import ChessGame
 from ai import ChessAI
 
 # Server version - increment this when making changes
-VERSION = "1.1.4"
+VERSION = "1.1.6"
 
 app = FastAPI(title="Chess API", version=VERSION)
 
@@ -43,8 +43,8 @@ def get_or_create_game(game_id: str = "default") -> ChessGame:
     """Get or create a game instance."""
     if game_id not in games:
         games[game_id] = ChessGame()
-        # Default: medium difficulty with 2 second time limit
-        ai_players[game_id] = ChessAI(depth=4, max_time=2.0)
+        # Default: medium difficulty with 1.5 second time limit
+        ai_players[game_id] = ChessAI(depth=3, max_time=1.5)
     return games[game_id]
 
 
@@ -127,7 +127,7 @@ async def reset_game(game_id: str = "default"):
     """Reset the game."""
     async with get_game_lock(game_id):
         games[game_id] = ChessGame()
-        ai_players[game_id] = ChessAI(depth=4, max_time=2.0)
+        ai_players[game_id] = ChessAI(depth=3, max_time=1.5)
         return game_state_to_dict(games[game_id])
 
 
@@ -211,7 +211,7 @@ async def configure_ai(config: AIConfigRequest, game_id: str = "default"):
     """Configure AI difficulty."""
     global ai_players
     # Map depth to appropriate time limits for better UX
-    time_limits = {2: 1.0, 3: 2.0, 4: 3.0}  # Easy: 1s, Medium: 2s, Hard: 3s
+    time_limits = {1: 0.5, 2: 1.0, 3: 1.5, 4: 3.0}  # Easy: 0.5s, Medium: 1s, Hard: 1.5s, Very Hard: 3s
     max_time = time_limits.get(config.depth, 2.0)
     ai_players[game_id] = ChessAI(depth=config.depth, max_time=max_time)
     return {"success": True, "depth": config.depth, "max_time": max_time}

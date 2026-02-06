@@ -125,12 +125,27 @@ class ChessAI:
         self.time_limit_reached = False
         self.killer_moves = [[None, None] for _ in range(20)]
         
+        # Initialize hash table if needed
+        if ChessAI._HASH_TABLE is None:
+            self._init_hash_table()
+        
         color = game.current_player
         best_move = None
         
+        # Get all moves first
+        moves = self._get_all_moves_ordered(game, color, 0)
+        if not moves:
+            return None
+        
+        # Quick shallow search first (depth 1) to ensure we have a move
+        try:
+            best_move = self._search_at_depth(game, 1, color)
+        except TimeoutError:
+            pass
+        
         # Iterative deepening - search progressively deeper until time runs out
-        for depth in range(1, self.max_depth + 1):
-            if time.time() - self.start_time > self.max_time * 0.8:
+        for depth in range(2, self.max_depth + 1):
+            if time.time() - self.start_time > self.max_time * 0.7:
                 break
                 
             try:
@@ -139,6 +154,11 @@ class ChessAI:
                     best_move = move
             except TimeoutError:
                 break
+        
+        # Fallback: if no move found, return first legal move
+        if best_move is None and moves:
+            m = moves[0]
+            best_move = (m[0], m[1], m[2], m[3])
         
         return best_move
 
@@ -226,19 +246,50 @@ class ChessAI:
         moves.sort(key=move_score, reverse=True)
         return moves
 
+    # Pre-computed Zobrist-like hash table
+    _HASH_TABLE = None
+    
+    def _init_hash_table(self):
+        """Initialize hash table for Zobrist hashing."""
+        import random
+        if ChessAI._HASH_TABLE is None:
+            ChessAI._HASH_TABLE = {}
+            random.seed(12345)  # Fixed seed for reproducibility
+            for row in range(8):
+                for col in range(8):
+                    for color in ['white', 'black']:
+                        for piece_type in ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']:
+                            ChessAI._HASH_TABLE[(row, col, color, piece_type)] = random.getrandbits(64)
+            # Side to move, castling rights
+            ChessAI._HASH_TABLE[('side', 'white')] = random.getrandbits(64)
+            ChessAI._HASH_TABLE[('side', 'black')] = random.getrandbits(64)
+            for color in ['white', 'black']:
+                for side in ['kingSide', 'queenSide']:
+                    ChessAI._HASH_TABLE[(color, side)] = random.getrandbits(64)
+    
     def _hash_board(self, game: ChessGame) -> int:
-        """Create a simple hash of the board state."""
+        """Create a Zobrist hash of the board state."""
+        if ChessAI._HASH_TABLE is None:
+            self._init_hash_table()
+        
         h = 0
         for row in range(8):
             for col in range(8):
                 piece = game.board[row][col]
                 if piece:
-                    h ^= hash((row, col, piece.color, piece.type)) * 31
-        h ^= hash((game.current_player, 
-                   game.castling_rights['white']['kingSide'],
-                   game.castling_rights['white']['queenSide'],
-                   game.castling_rights['black']['kingSide'],
-                   game.castling_rights['black']['queenSide']))
+                    h ^= ChessAI._HASH_TABLE[(row, col, piece.color, piece.type)]
+        
+        h ^= ChessAI._HASH_TABLE[('side', game.current_player)]
+        
+        if game.castling_rights['white']['kingSide']:
+            h ^= ChessAI._HASH_TABLE[('white', 'kingSide')]
+        if game.castling_rights['white']['queenSide']:
+            h ^= ChessAI._HASH_TABLE[('white', 'queenSide')]
+        if game.castling_rights['black']['kingSide']:
+            h ^= ChessAI._HASH_TABLE[('black', 'kingSide')]
+        if game.castling_rights['black']['queenSide']:
+            h ^= ChessAI._HASH_TABLE[('black', 'queenSide')]
+        
         return h
 
     def _make_move_fast(self, game: ChessGame, from_row: int, from_col: int,
@@ -357,12 +408,80 @@ class ChessAI:
         game.castling_rights = undo_info['castling_rights']
         game.king_positions = undo_info['king_positions']
 
+    def _quiescence_search(self, game: ChessGame, alpha: float, beta: float,
+                           maximizing_color: str, depth: int) -> float:
+        """Quiescence search to avoid horizon effect - only search captures."""
+        self.nodes_evaluated += 1
+        
+        # Stand pat evaluation
+        stand_pat = self._evaluate_board(game, maximizing_color)
+        
+        if is_minimizing := (game.current_player != maximizing_color):
+            if stand_pat >= beta:
+                return beta
+            if stand_pat > alpha:
+                alpha = stand_pat
+        else:
+            if stand_pat <= alpha:
+                return alpha
+            if stand_pat < beta:
+                beta = stand_pat
+        
+        # Limit quiescence depth to prevent explosion
+        if depth > 4:
+            return stand_pat
+        
+        # Get only capture moves
+        captures = self._get_capture_moves(game, game.current_player)
+        
+        for from_row, from_col, to_row, to_col, move_info in captures:
+            undo_info = self._make_move_fast(game, from_row, from_col, to_row, to_col, move_info)
+            if undo_info is None:
+                continue
+            
+            try:
+                score = self._quiescence_search(game, alpha, beta, maximizing_color, depth + 1)
+            finally:
+                self._undo_move_fast(game, undo_info)
+            
+            if game.current_player != maximizing_color:  # Was maximizing's turn
+                if score >= beta:
+                    return beta
+                alpha = max(alpha, score)
+            else:
+                if score <= alpha:
+                    return alpha
+                beta = min(beta, score)
+        
+        return alpha if game.current_player != maximizing_color else beta
+    
+    def _get_capture_moves(self, game: ChessGame, color: str) -> List:
+        """Get only capture moves for quiescence search."""
+        captures = []
+        for row in range(8):
+            for col in range(8):
+                piece = game.board[row][col]
+                if piece and piece.color == color:
+                    valid_moves = game.get_valid_moves(row, col)
+                    for move in valid_moves:
+                        # Only captures
+                        if game.board[move.row][move.col] is not None:
+                            victim = game.board[move.row][move.col]
+                            attacker = piece
+                            # MVV-LVA ordering
+                            score = PIECE_VALUES[victim.type] - PIECE_VALUES[attacker.type] // 10
+                            captures.append((row, col, move.row, move.col, move, score))
+        
+        captures.sort(key=lambda x: x[5], reverse=True)
+        return [(c[0], c[1], c[2], c[3], c[4]) for c in captures]
+    
     def _minimax(self, game: ChessGame, depth: int, alpha: float, beta: float,
                  is_minimizing: bool, maximizing_color: str, current_depth: int) -> float:
         """Minimax algorithm with Alpha-Beta pruning and Transposition Table."""
         self.nodes_evaluated += 1
         
-        if self._check_timeout():
+        # Check timeout less frequently (every 1000 nodes)
+        if self.nodes_evaluated % 1000 == 0 and self._check_timeout():
             raise TimeoutError()
         
         # Transposition Table Lookup
@@ -377,7 +496,11 @@ class ChessAI:
                 return tt_entry.value
         
         if depth == 0:
-            return self._evaluate_board(game, maximizing_color)
+            # For fast/easy mode (max_depth <= 2), skip quiescence search
+            if self.max_depth <= 2:
+                return self._evaluate_board(game, maximizing_color)
+            # Use quiescence search for deeper searches
+            return self._quiescence_search(game, alpha, beta, maximizing_color, 0)
         
         current_color = game.current_player
         moves = self._get_all_moves_ordered(game, current_color, current_depth)
@@ -386,10 +509,10 @@ class ChessAI:
             # Checkmate or stalemate
             if game.is_in_check(current_color):
                 if current_color == maximizing_color:
-                    return float('-inf') + current_depth  # Prefer faster checkmate
+                    return float('-inf') + current_depth
                 else:
                     return float('inf') - current_depth
-            return 0  # Stalemate
+            return 0
         
         best_value = float('inf') if is_minimizing else float('-inf')
         best_move = None
@@ -404,7 +527,6 @@ class ChessAI:
             try:
                 eval = self._minimax(game, depth - 1, alpha, beta, not is_minimizing, maximizing_color, current_depth + 1)
             finally:
-                # Always undo the move, even if TimeoutError is raised
                 self._undo_move_fast(game, undo_info)
             
             if is_minimizing:
@@ -413,7 +535,6 @@ class ChessAI:
                     best_move = (from_row, from_col, to_row, to_col)
                 beta = min(beta, eval)
                 if beta <= alpha:
-                    # Killer move heuristic
                     if current_depth < len(self.killer_moves):
                         if self.killer_moves[current_depth][0] != best_move:
                             self.killer_moves[current_depth][1] = self.killer_moves[current_depth][0]
@@ -425,7 +546,6 @@ class ChessAI:
                     best_move = (from_row, from_col, to_row, to_col)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
-                    # Killer move heuristic
                     if current_depth < len(self.killer_moves):
                         if self.killer_moves[current_depth][0] != best_move:
                             self.killer_moves[current_depth][1] = self.killer_moves[current_depth][0]
@@ -468,24 +588,7 @@ class ChessAI:
                     else:
                         score -= value + position_value
         
-        # Mobility bonus (simplified - count legal moves)
-        own_moves = 0
-        opp_moves = 0
-        opponent = 'black' if color == 'white' else 'white'
-        
-        for row in range(8):
-            for col in range(8):
-                piece = game.board[row][col]
-                if piece:
-                    moves = len(game.get_valid_moves(row, col))
-                    if piece.color == color:
-                        own_moves += moves
-                    else:
-                        opp_moves += moves
-        
-        score += (own_moves - opp_moves) * 5
-        
-        # Check bonus
+        # Check bonus (fast check)
         if game.is_in_check('black' if color == 'white' else 'white'):
             score += 50
         
