@@ -367,37 +367,38 @@ class ChessGame:
             return False
         
         # Remove the last two moves from history (one for each player)
-        # But restore to the state after the first player's move
         self.move_history.pop()  # Remove opponent's move
-        last_state = self.move_history[-1]  # Get current player's last move state (keep it in history)
+        self.move_history.pop()  # Remove current player's move
         
-        # Restore state
-        self.board = copy.deepcopy(last_state['board'])
-        self.castling_rights = copy.deepcopy(last_state['castling_rights'])
-        self.king_positions = copy.deepcopy(last_state['king_positions'])
-        self.en_passant_target = last_state['en_passant_target']
-        # current_player in history is the player who just moved
-        # After undo, it should be the opponent's turn
-        self.current_player = 'black' if last_state['current_player'] == 'white' else 'white'
-        
-        # Recalculate captured pieces from remaining history
-        self.captured_by_white = []
-        self.captured_by_black = []
-        for move in self.move_history:
-            if move['captured']:
-                if move['piece'].color == 'white':
-                    self.captured_by_white.append(move['captured'])
-                else:
-                    self.captured_by_black.append(move['captured'])
-        
-        # Update last move
-        if len(self.move_history) >= 1:
+        # Restore to the state before both moves
+        if len(self.move_history) > 0:
+            # Restore from the last remaining state in history
+            last_state = self.move_history[-1]
+            self.board = copy.deepcopy(last_state['board'])
+            self.castling_rights = copy.deepcopy(last_state['castling_rights'])
+            self.king_positions = copy.deepcopy(last_state['king_positions'])
+            self.en_passant_target = last_state['en_passant_target']
+            # After undo, it's the opponent's turn (they move next)
+            self.current_player = 'black' if last_state['current_player'] == 'white' else 'white'
+            
+            # Recalculate captured pieces from remaining history
+            self.captured_by_white = []
+            self.captured_by_black = []
+            for move in self.move_history:
+                if move['captured']:
+                    if move['piece'].color == 'white':
+                        self.captured_by_white.append(move['captured'])
+                    else:
+                        self.captured_by_black.append(move['captured'])
+            
+            # Update last move
             self.last_move = {
                 'from': self.move_history[-1]['from'],
                 'to': self.move_history[-1]['to']
             }
         else:
-            self.last_move = None
+            # No moves left, reset to initial state
+            self.init_board()
         
         return True
 
