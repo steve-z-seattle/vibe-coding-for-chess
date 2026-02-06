@@ -783,7 +783,6 @@
             
             <div class="buttons">
                 <button class="btn-ai" id="aiMoveBtn" onclick="requestAIMove()" style="display: none;">🤖 AI 走棋</button>
-                <button class="btn-secondary" onclick="undoMove()">↩ 悔棋</button>
                 <button class="btn-primary" onclick="resetGame()">🔄 新游戏</button>
                 <button class="btn-danger" onclick="flipBoard()">🔃 翻转棋盘</button>
                 <button class="btn-secondary" onclick="showGameModeModal()">⚙️ 游戏设置</button>
@@ -1510,44 +1509,6 @@
                 closeGameOverModal();
             }
         });
-
-        // 悔棋
-        async function undoMove() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/game/${GAME_ID}/undo`, {
-                    method: 'POST'
-                });
-                
-                if (response.ok) {
-                    gameState = await response.json();
-                    selectedSquare = null;
-                    validMoves = [];
-                    renderBoard();
-                    updateStatus();
-                    updateCapturedPieces();
-                    updateMoveList();
-                    
-                    // 人机模式下悔棋后，如果是AI回合，需要再悔一步
-                    if (gameConfig.mode === 'pve' && gameState.current_player !== gameConfig.playerColor) {
-                        setTimeout(async () => {
-                            const response2 = await fetch(`${API_BASE_URL}/game/${GAME_ID}/undo`, {
-                                method: 'POST'
-                            });
-                            if (response2.ok) {
-                                gameState = await response2.json();
-                                renderBoard();
-                                updateStatus();
-                                updateCapturedPieces();
-                                updateMoveList();
-                            }
-                        }, 100);
-                    }
-                }
-            } catch (error) {
-                console.error('Undo failed:', error);
-                showError('悔棋失败');
-            }
-        }
 
         // 新游戏
         async function resetGame() {

@@ -14,7 +14,7 @@ from chess_game import ChessGame
 from ai import ChessAI
 
 # Server version - increment this when making changes
-VERSION = "1.1.1"
+VERSION = "1.1.4"
 
 app = FastAPI(title="Chess API", version=VERSION)
 
@@ -158,18 +158,6 @@ async def get_valid_moves(row: int, col: int, game_id: str = "default"):
     
     return ValidMovesResponse(moves=moves)
 
-
-@app.post("/api/game/{game_id}/undo")
-async def undo_move(game_id: str = "default"):
-    """Undo the last move."""
-    async with get_game_lock(game_id):
-        game = get_or_create_game(game_id)
-        success = game.undo_move()
-        
-        if not success:
-            raise HTTPException(status_code=400, detail="Cannot undo move")
-        
-        return game_state_to_dict(game)
 
 
 @app.post("/api/game/{game_id}/ai-move")
