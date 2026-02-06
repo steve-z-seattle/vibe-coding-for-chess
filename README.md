@@ -116,7 +116,8 @@ uvicorn main:app --reload
   - 棋局回顾导航（支持键盘快捷键）
   - 走棋音效
   - 棋盘翻转
-  - PGN 棋谱导入（支持开局导入和棋局复盘）
+  - PGN 棋谱导入：支持从标准 PGN 格式导入棋局，在游戏开始界面选择"导入 PGN"即可粘贴棋谱，自动解析头部信息（赛事、选手、结果等），支持注释和变着过滤，导入后可使用棋局回顾功能复盘
+
 
 ## 技术栈
 
@@ -197,25 +198,6 @@ python -m pytest tests/ --cov=. --cov-report=html
   - 王车易位、升变、消歧处理
   - 完整棋局导入
   - 边界情况和错误处理
-
-## PGN 导入功能
-
-支持从标准 PGN (Portable Game Notation) 格式导入棋局：
-
-```
-[Event "FIDE World Championship"]
-[White "Carlsen, Magnus"]
-[Black "Caruana, Fabiano"]
-[Result "1-0"]
-
-1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 1-0
-```
-
-特性：
-- 在游戏开始界面选择"导入 PGN"
-- 自动解析头部信息（赛事、选手、结果等）
-- 支持注释和变着过滤
-- 导入后可使用棋局回顾功能复盘
 
 ## 许可证
 
