@@ -615,25 +615,30 @@
         }
 
         /* API 状态指示器 */
+        /* API 状态指示器 */
         .api-status {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
-            transition: all 0.3s ease;
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
         }
 
         .api-status.connected {
             background: #10b981;
-            color: white;
         }
 
         .api-status.disconnected {
             background: #ef4444;
-            color: white;
+        }
+
+        .status-connection {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         /* 版本号显示 */
@@ -646,31 +651,6 @@
             font-size: 12px;
             color: #9ca3af;
             background: rgba(0, 0, 0, 0.3);
-        }
-
-        /* 音效控制按钮 */
-        .sound-toggle {
-            position: fixed;
-            top: 20px;
-            right: 140px;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: #4b5563;
-            color: white;
-            border: none;
-        }
-
-        .sound-toggle:hover {
-            background: #6b7280;
-        }
-
-        .sound-toggle.muted {
-            background: #374151;
-            color: #9ca3af;
         }
 
         /* 加载动画 */
@@ -770,15 +750,11 @@
     </style>
 </head>
 <body>
-    <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊 音效</button>
-    <div class="api-status disconnected" id="apiStatus">API 未连接</div>
     <div class="version-display" id="versionDisplay">版本: --</div>
     <div class="loading" id="loading">
         <div class="loading-text">AI 思考中...</div>
     </div>
 
-    <h1>♔ 国际象棋</h1>
-    
     <div class="game-container">
         <div class="board-section">
             <div class="board-wrapper">
@@ -801,6 +777,10 @@
                 <div class="turn-indicator">
                     <span>轮到:</span>
                     <img class="turn-piece" id="turnPiece" src="pieces/w_king.svg" alt="turn indicator">
+                </div>
+                <div class="status-connection" id="statusConnection">
+                    <span class="api-status disconnected" id="apiStatusIndicator"></span>
+                    <span id="apiStatusText">API 未连接</span>
                 </div>
             </div>
             
@@ -837,8 +817,8 @@
             
             <div class="buttons">
                 <button class="btn-ai" id="aiMoveBtn" onclick="requestAIMove()" style="display: none;">🤖 AI 走棋</button>
-                <button class="btn-primary" onclick="resetGame()">🔄 新游戏</button>
-                <button class="btn-danger" onclick="flipBoard()">🔃 翻转棋盘</button>
+                <button class="btn-secondary" onclick="resetGame()">🔄 新游戏</button>
+                <button class="btn-secondary" onclick="flipBoard()">🔃 翻转棋盘</button>
                 <button class="btn-secondary" onclick="showGameModeModal()">⚙️ 游戏设置</button>
             </div>
         </div>
@@ -919,7 +899,7 @@
         <div class="game-over-dialog">
             <div class="game-over-title" id="gameOverTitle">游戏结束</div>
             <div class="game-over-message" id="gameOverMessage"></div>
-            <button class="btn-primary" onclick="resetGame(); closeGameOverModal();" style="margin-bottom: 10px;">再来一局</button>
+            <button class="btn-secondary" onclick="resetGame(); closeGameOverModal();" style="margin-bottom: 10px;">再来一局</button>
             <button class="btn-secondary" onclick="closeGameOverModal();" style="margin-bottom: 10px; width: 100%;">查看棋局</button>
             <button class="btn-secondary" onclick="closeGameOverModal(); showGameModeModal();" style="width: 100%;">更改设置</button>
         </div>
@@ -931,8 +911,7 @@
         const API_BASE_URL = `${SERVER_URL}/api`;
         const GAME_ID = 'default';
 
-        // 音效配置
-        let soundEnabled = true;
+        // 音效配置（始终开启）
         let soundsLoaded = false;
         
         // 预加载音频文件
@@ -949,7 +928,6 @@
 
         // 播放移动音效
         function playMoveSound() {
-            if (!soundEnabled) return;
             try {
                 sounds.move.currentTime = 0;
                 sounds.move.play().catch(e => console.log('Sound play failed:', e));
@@ -960,7 +938,6 @@
 
         // 播放吃子音效
         function playCaptureSound() {
-            if (!soundEnabled) return;
             try {
                 sounds.capture.currentTime = 0;
                 sounds.capture.play().catch(e => console.log('Sound play failed:', e));
@@ -969,29 +946,13 @@
             }
         }
 
-
-        
         // 播放游戏结束音效
         function playGameOverSound() {
-            if (!soundEnabled) return;
             try {
                 sounds.gameover.currentTime = 0;
                 sounds.gameover.play().catch(e => console.log('Sound play failed:', e));
             } catch (e) {
                 console.log('Sound play failed:', e);
-            }
-        }
-
-        // 切换音效开关
-        function toggleSound() {
-            soundEnabled = !soundEnabled;
-            const btn = document.getElementById('soundToggle');
-            if (soundEnabled) {
-                btn.textContent = '🔊 音效';
-                btn.classList.remove('muted');
-            } else {
-                btn.textContent = '🔇 静音';
-                btn.classList.add('muted');
             }
         }
 
@@ -1036,19 +997,23 @@
         async function checkApiStatus() {
             try {
                 const response = await fetch(SERVER_URL);
+                const indicator = document.getElementById('apiStatusIndicator');
+                const text = document.getElementById('apiStatusText');
                 if (response.ok) {
-                    document.getElementById('apiStatus').textContent = 'API 已连接';
-                    document.getElementById('apiStatus').classList.remove('disconnected');
-                    document.getElementById('apiStatus').classList.add('connected');
+                    text.textContent = 'API 已连接';
+                    indicator.classList.remove('disconnected');
+                    indicator.classList.add('connected');
                 } else {
-                    document.getElementById('apiStatus').textContent = 'API 未连接';
-                    document.getElementById('apiStatus').classList.remove('connected');
-                    document.getElementById('apiStatus').classList.add('disconnected');
+                    text.textContent = 'API 未连接';
+                    indicator.classList.remove('connected');
+                    indicator.classList.add('disconnected');
                 }
             } catch (error) {
-                document.getElementById('apiStatus').textContent = 'API 未连接';
-                document.getElementById('apiStatus').classList.remove('connected');
-                document.getElementById('apiStatus').classList.add('disconnected');
+                const indicator = document.getElementById('apiStatusIndicator');
+                const text = document.getElementById('apiStatusText');
+                text.textContent = 'API 未连接';
+                indicator.classList.remove('connected');
+                indicator.classList.add('disconnected');
             }
         }
 
