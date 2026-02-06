@@ -1757,7 +1757,6 @@
                 const response = await fetch(`${API_BASE_URL}/game/${GAME_ID}/history/${moveNumber}`);
                 if (response.ok) {
                     const historyState = await response.json();
-                    
                     // 使用历史状态更新显示
                     gameState = {
                         ...gameState,
@@ -1769,6 +1768,7 @@
                         king_positions: historyState.king_positions,
                         castling_rights: historyState.castling_rights,
                         en_passant_target: historyState.en_passant_target,
+                        in_check: historyState.in_check,
                         is_review: moveNumber !== reviewState.totalMoves
                     };
                     
@@ -1833,20 +1833,16 @@
         }
         
         function goToPrev() {
-            console.log('goToPrev called, current:', reviewState.currentMoveNumber, 'total:', reviewState.totalMoves);
             if (reviewState.currentMoveNumber > 0) {
                 goToMove(reviewState.currentMoveNumber - 1);
             } else {
-                console.log('goToPrev: already at start');
             }
         }
         
         function goToNext() {
-            console.log('goToNext called, current:', reviewState.currentMoveNumber, 'total:', reviewState.totalMoves);
             if (reviewState.currentMoveNumber < reviewState.totalMoves) {
                 goToMove(reviewState.currentMoveNumber + 1);
             } else {
-                console.log('goToNext: already at end');
             }
         }
         
@@ -1867,13 +1863,8 @@
             const prevBtn = document.querySelector('button[onclick="goToPrev()"]');
             const nextBtn = document.querySelector('button[onclick="goToNext()"]');
             
-            console.log('updateReviewButtonState:', 'current:', reviewState.currentMoveNumber, 'total:', reviewState.totalMoves);
-            console.log('Buttons found:', 'prev:', !!prevBtn, 'next:', !!nextBtn);
-            
             if (prevBtn) prevBtn.disabled = reviewState.currentMoveNumber === 0;
             if (nextBtn) nextBtn.disabled = reviewState.currentMoveNumber >= reviewState.totalMoves;
-            
-            console.log('Button states:', 'prev disabled:', prevBtn?.disabled, 'next disabled:', nextBtn?.disabled);
         }
         
         function highlightLastMove(from, to) {
