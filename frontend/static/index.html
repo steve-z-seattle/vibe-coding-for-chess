@@ -1386,8 +1386,17 @@
                     
                     // 如果玩家有预选的棋子，重新加载有效移动
                     if (selectedSquare && gameConfig.mode === 'pve' && gameState.current_player === gameConfig.playerColor) {
-                        await loadValidMoves(selectedSquare.row, selectedSquare.col);
-                        renderBoard();
+                        const piece = gameState.board[selectedSquare.row][selectedSquare.col];
+                        // 检查预选的棋子是否仍然存在且属于玩家
+                        if (piece && piece.color === gameConfig.playerColor) {
+                            await loadValidMoves(selectedSquare.row, selectedSquare.col);
+                            renderBoard();
+                        } else {
+                            // 棋子被吃掉，清除选择
+                            selectedSquare = null;
+                            validMoves = [];
+                            renderBoard();
+                        }
                     }
                 } else if (result.message && result.message.includes("retry")) {
                     // 游戏状态被其他请求改变，稍等后刷新状态
