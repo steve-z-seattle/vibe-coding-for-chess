@@ -1644,11 +1644,24 @@
             if (!gameState) return;
             if (moveNumber < 0 || moveNumber > reviewState.totalMoves) return;
             
+            // 记录是否是向前导航（下一步）
+            const isMovingForward = moveNumber > reviewState.currentMoveNumber;
+            
             reviewState.currentMoveNumber = moveNumber;
             
             // 如果是要查看当前最新位置
             if (moveNumber === reviewState.totalMoves) {
                 await resumeGame();
+                // 向前导航到最新位置时播放音效
+                if (isMovingForward && gameState.last_move) {
+                    // 检查最后一步是否是吃子
+                    const lastMoveData = gameState.move_history[gameState.move_history.length - 1];
+                    if (lastMoveData && lastMoveData.captured) {
+                        playCaptureSound();
+                    } else {
+                        playMoveSound();
+                    }
+                }
                 return;
             }
             
@@ -1680,6 +1693,17 @@
                     // 高亮最后一步
                     if (historyState.last_move) {
                         highlightLastMove(historyState.last_move.from, historyState.last_move.to);
+                    }
+                    
+                    // 向前导航时播放音效
+                    if (isMovingForward && historyState.last_move) {
+                        // 获取当前步的move数据来判断是否是吃子
+                        const currentMoveData = gameState.move_history[moveNumber - 1];
+                        if (currentMoveData && currentMoveData.captured) {
+                            playCaptureSound();
+                        } else {
+                            playMoveSound();
+                        }
                     }
                     
                     updateReviewDisplay();
