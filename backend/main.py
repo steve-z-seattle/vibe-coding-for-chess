@@ -16,7 +16,7 @@ from ai import ChessAI
 from pgn_parser import import_pgn_to_game, parse_pgn
 
 # Server version - increment this when making changes
-VERSION = "1.5.5"
+VERSION = "1.6.0"
 
 app = FastAPI(title="Chess API", version=VERSION)
 
