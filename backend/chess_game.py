@@ -421,7 +421,7 @@ class ChessGame:
             for col in range(8):
                 piece = self.board[row][col]
                 if piece and piece.type != 'king':
-                    pieces[piece.color].append({**piece.dict(), 'row': row, 'col': col})
+                    pieces[piece.color].append({**piece.model_dump(), 'row': row, 'col': col})
         
         # King vs King
         if not pieces['white'] and not pieces['black']:
