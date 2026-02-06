@@ -695,6 +695,48 @@
             font-size: 18px;
         }
 
+        /* 棋局回顾按钮 */
+        .btn-review {
+            padding: 8px 12px;
+            font-size: 14px;
+            background: linear-gradient(145deg, #4b5563, #374151);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-review:hover {
+            background: linear-gradient(145deg, #6b7280, #4b5563);
+            transform: translateY(-1px);
+        }
+
+        .btn-review:disabled {
+            background: #374151;
+            color: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-review-exit {
+            background: linear-gradient(145deg, #ef4444, #dc2626);
+            margin-left: 10px;
+        }
+
+        .btn-review-exit:hover {
+            background: linear-gradient(145deg, #f87171, #ef4444);
+        }
+
+        .review-panel {
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .review-position {
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
         /* 响应式 */
         @media (max-width: 768px) {
             .board {
@@ -779,6 +821,18 @@
             <div class="move-history">
                 <div class="move-history-title">走棋记录</div>
                 <div class="move-list" id="moveList"></div>
+            </div>
+            
+            <!-- 棋局导航 - 始终可用 -->
+            <div class="review-panel" id="reviewPanel" style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                <div class="review-title" style="font-size: 12px; color: #a0aec0; margin-bottom: 10px; text-transform: uppercase;">棋局导航 <span style="color: #6b7280; font-size: 10px;">(← → 键盘)</span></div>
+                <div class="review-controls" style="display: flex; gap: 8px; align-items: center; justify-content: center;">
+                    <button class="btn-review" onclick="goToStart()" title="开局 (Home)">⏮</button>
+                    <button class="btn-review" onclick="goToPrev()" title="上一步 (←)">◀</button>
+                    <span class="review-position" id="reviewPosition" style="font-size: 14px; min-width: 80px; text-align: center;">第 0 步</span>
+                    <button class="btn-review" onclick="goToNext()" title="下一步 (→)">▶</button>
+                    <button class="btn-review" onclick="goToEnd()" title="最新 (End)">⏭</button>
+                </div>
             </div>
             
             <div class="buttons">
@@ -963,6 +1017,13 @@
         
         // AI 思考状态标志
         let isAIThinking = false;
+        
+        // 棋局回顾状态
+        let reviewState = {
+            isReviewing: false,
+            currentMoveNumber: 0,  // 0 = 初始位置, 1 = 第1步后, ...
+            totalMoves: 0
+        };
 
         // 初始化
         async function init() {
@@ -1093,6 +1154,10 @@
                 const response = await fetch(`${API_BASE_URL}/game/${GAME_ID}/state`);
                 if (response.ok) {
                     gameState = await response.json();
+                    reviewState.totalMoves = gameState.move_history ? gameState.move_history.length : 0;
+                    reviewState.currentMoveNumber = reviewState.totalMoves;
+                    updateReviewDisplay();
+                    updateReviewButtonState();
                 }
             } catch (error) {
                 console.error('Failed to load game state:', error);
@@ -1257,6 +1322,8 @@
                     updateStatus();
                     updateCapturedPieces();
                     updateMoveList();
+                    updateReviewState();
+                    updateReviewButtonState();
                     checkGameEnd();
                     
                     // 人机模式下，玩家走完后自动触发 AI 走棋
@@ -1339,6 +1406,8 @@
                     updateStatus();
                     updateCapturedPieces();
                     updateMoveList();
+                    updateReviewState();
+                    updateReviewButtonState();
                     checkGameEnd();
                 } else if (result.message && result.message.includes("retry")) {
                     // 游戏状态被其他请求改变，稍等后刷新状态
@@ -1510,6 +1579,168 @@
             }
         });
 
+        // 棋局导航功能 - 始终可用
+        
+        // 更新总步数（当游戏状态更新时调用）
+        function updateReviewState() {
+            if (gameState && gameState.move_history) {
+                const oldTotal = reviewState.totalMoves;
+                reviewState.totalMoves = gameState.move_history.length;
+                // 如果有新步数，或者正在查看当前位置，更新当前步数到最新
+                if (reviewState.totalMoves > oldTotal || reviewState.currentMoveNumber >= oldTotal) {
+                    reviewState.currentMoveNumber = reviewState.totalMoves;
+                }
+                updateReviewDisplay();
+            }
+        }
+        
+        async function goToMove(moveNumber) {
+            if (!gameState) return;
+            if (moveNumber < 0 || moveNumber > reviewState.totalMoves) return;
+            
+            reviewState.currentMoveNumber = moveNumber;
+            
+            // 如果是要查看当前最新位置
+            if (moveNumber === reviewState.totalMoves) {
+                await resumeGame();
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/game/${GAME_ID}/history/${moveNumber}`);
+                if (response.ok) {
+                    const historyState = await response.json();
+                    
+                    // 使用历史状态更新显示
+                    gameState = {
+                        ...gameState,
+                        board: historyState.board,
+                        current_player: historyState.current_player,
+                        captured_by_white: historyState.captured_by_white,
+                        captured_by_black: historyState.captured_by_black,
+                        last_move: historyState.last_move,
+                        king_positions: historyState.king_positions,
+                        castling_rights: historyState.castling_rights,
+                        en_passant_target: historyState.en_passant_target,
+                        is_review: moveNumber !== reviewState.totalMoves
+                    };
+                    
+                    selectedSquare = null;
+                    validMoves = [];
+                    renderBoard();
+                    updateStatus();
+                    updateCapturedPieces();
+                    
+                    // 高亮最后一步
+                    if (historyState.last_move) {
+                        highlightLastMove(historyState.last_move.from, historyState.last_move.to);
+                    }
+                    
+                    updateReviewDisplay();
+                    updateReviewButtonState();
+                }
+            } catch (error) {
+                console.error('Load history failed:', error);
+            }
+        }
+        
+        async function resumeGame() {
+            // 恢复当前游戏状态
+            try {
+                const response = await fetch(`${API_BASE_URL}/game/${GAME_ID}/state`);
+                if (response.ok) {
+                    gameState = await response.json();
+                    reviewState.currentMoveNumber = reviewState.totalMoves;
+                    selectedSquare = null;
+                    validMoves = [];
+                    renderBoard();
+                    updateStatus();
+                    updateCapturedPieces();
+                    updateMoveList();
+                    updateReviewDisplay();
+                    updateReviewButtonState();
+                }
+            } catch (error) {
+                console.error('Resume game failed:', error);
+            }
+        }
+        
+        function goToStart() {
+            goToMove(0);
+        }
+        
+        function goToPrev() {
+            if (reviewState.currentMoveNumber > 0) {
+                goToMove(reviewState.currentMoveNumber - 1);
+            }
+        }
+        
+        function goToNext() {
+            if (reviewState.currentMoveNumber < reviewState.totalMoves) {
+                goToMove(reviewState.currentMoveNumber + 1);
+            }
+        }
+        
+        function goToEnd() {
+            goToMove(reviewState.totalMoves);
+        }
+        
+        function updateReviewDisplay() {
+            const positionText = reviewState.currentMoveNumber === 0 
+                ? '初始位置' 
+                : (reviewState.currentMoveNumber === reviewState.totalMoves 
+                    ? `第 ${reviewState.currentMoveNumber} 步 (最新)` 
+                    : `第 ${reviewState.currentMoveNumber} 步`);
+            document.getElementById('reviewPosition').textContent = positionText;
+        }
+        
+        function updateReviewButtonState() {
+            const prevBtn = document.querySelector('button[onclick="goToPrev()"]');
+            const nextBtn = document.querySelector('button[onclick="goToNext()"]');
+            
+            if (prevBtn) prevBtn.disabled = reviewState.currentMoveNumber === 0;
+            if (nextBtn) nextBtn.disabled = reviewState.currentMoveNumber >= reviewState.totalMoves;
+        }
+        
+        function highlightLastMove(from, to) {
+            // 清除之前的高亮
+            document.querySelectorAll('.square.last-move').forEach(sq => {
+                sq.classList.remove('last-move');
+            });
+            
+            // 添加新的高亮
+            const fromIdx = isFlipped ? (7 - from.row) * 8 + (7 - from.col) : from.row * 8 + from.col;
+            const toIdx = isFlipped ? (7 - to.row) * 8 + (7 - to.col) : to.row * 8 + to.col;
+            
+            const squares = document.querySelectorAll('.square');
+            if (squares[fromIdx]) squares[fromIdx].classList.add('last-move');
+            if (squares[toIdx]) squares[toIdx].classList.add('last-move');
+        }
+        
+        // 键盘事件监听
+        document.addEventListener('keydown', function(e) {
+            if (!gameState) return;
+            
+            switch(e.key) {
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    goToPrev();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    goToNext();
+                    break;
+                case 'Home':
+                    e.preventDefault();
+                    goToStart();
+                    break;
+                case 'End':
+                    e.preventDefault();
+                    goToEnd();
+                    break;
+            }
+        });
+
         // 新游戏
         async function resetGame() {
             try {
@@ -1519,6 +1750,8 @@
                 
                 if (response.ok) {
                     isAIThinking = false;
+                    reviewState.currentMoveNumber = 0;
+                    reviewState.totalMoves = 0;
                     gameState = await response.json();
                     selectedSquare = null;
                     validMoves = [];
@@ -1526,6 +1759,8 @@
                     updateStatus();
                     updateCapturedPieces();
                     updateMoveList();
+                    updateReviewState();
+                    updateReviewButtonState();
                     
                     // 如果是人机模式且玩家执黑，AI 先走
                     if (gameConfig.mode === 'pve' && gameConfig.playerColor === 'black') {
