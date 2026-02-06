@@ -795,6 +795,28 @@
                 <div class="captured-list" id="capturedByBlack"></div>
             </div>
             
+            <!-- 棋局估值 - 仅在回顾模式显示 -->
+            <div class="evaluation-panel" id="evaluationPanel" style="display: none; margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(16, 185, 129, 0.3);">
+                <div class="evaluation-title" style="font-size: 12px; color: #a0aec0; margin-bottom: 10px; text-transform: uppercase;">棋局估值 (回顾模式)</div>
+                <div class="evaluation-values" style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+                    <div class="eval-white" style="text-align: center; flex: 1;">
+                        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 4px;">白方</div>
+                        <div id="evalWhiteValue" style="font-size: 20px; font-weight: bold; color: #fff;">0</div>
+                    </div>
+                    <div class="eval-diff" style="text-align: center; padding: 0 10px;">
+                        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 4px;">差距</div>
+                        <div id="evalDiffValue" style="font-size: 18px; font-weight: bold; color: #10b981;">=</div>
+                    </div>
+                    <div class="eval-black" style="text-align: center; flex: 1;">
+                        <div style="font-size: 11px; color: #9ca3af; margin-bottom: 4px;">黑方</div>
+                        <div id="evalBlackValue" style="font-size: 20px; font-weight: bold; color: #fff;">0</div>
+                    </div>
+                </div>
+                <div class="eval-bar-container" style="margin-top: 10px; height: 8px; background: rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden;">
+                    <div id="evalBar" style="height: 100%; width: 50%; background: linear-gradient(90deg, #fff 0%, #10b981 50%, #000 100%); transition: width 0.3s ease;"></div>
+                </div>
+            </div>
+            
             <!-- 棋局导航 - 始终可用 -->
             <div class="review-panel" id="reviewPanel" style="margin-top: 20px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
                 <div class="review-title" style="font-size: 12px; color: #a0aec0; margin-bottom: 10px; text-transform: uppercase;">棋局导航 <span style="color: #6b7280; font-size: 10px;">(← → 键盘)</span></div>
@@ -1857,6 +1879,81 @@
                     ? `第 ${reviewState.currentMoveNumber} 步 (最新)` 
                     : `第 ${reviewState.currentMoveNumber} 步`);
             document.getElementById('reviewPosition').textContent = positionText;
+            
+            // Update evaluation display in review mode
+            updateEvaluation();
+        }
+        
+        // Piece values for evaluation
+        const PIECE_VALUES = {
+            pawn: 100,
+            knight: 320,
+            bishop: 330,
+            rook: 500,
+            queen: 900,
+            king: 0
+        };
+        
+        // Calculate and display material evaluation
+        function updateEvaluation() {
+            const evalPanel = document.getElementById('evaluationPanel');
+            
+            // Only show evaluation in review mode (is_review flag)
+            if (!gameState || !gameState.is_review) {
+                evalPanel.style.display = 'none';
+                return;
+            }
+            
+            evalPanel.style.display = 'block';
+            
+            // Calculate material values from board
+            let whiteValue = 0;
+            let blackValue = 0;
+            
+            if (gameState.board) {
+                for (let row = 0; row < 8; row++) {
+                    for (let col = 0; col < 8; col++) {
+                        const piece = gameState.board[row][col];
+                        if (piece) {
+                            const value = PIECE_VALUES[piece.type] || 0;
+                            if (piece.color === 'white') {
+                                whiteValue += value;
+                            } else {
+                                blackValue += value;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Update display
+            document.getElementById('evalWhiteValue').textContent = whiteValue;
+            document.getElementById('evalBlackValue').textContent = blackValue;
+            
+            const diff = whiteValue - blackValue;
+            const diffEl = document.getElementById('evalDiffValue');
+            const evalBar = document.getElementById('evalBar');
+            
+            if (diff > 0) {
+                diffEl.textContent = `+${diff}`;
+                diffEl.style.color = '#fff';
+                // White advantage - bar shifts to black side (right)
+                const percentage = Math.min(50 + diff / 20, 90);
+                evalBar.style.width = `${percentage}%`;
+                evalBar.style.background = `linear-gradient(90deg, #fff 0%, #fff ${50 - percentage/2}%, #10b981 ${50}%, #000 ${percentage}%)`;
+            } else if (diff < 0) {
+                diffEl.textContent = `${diff}`;
+                diffEl.style.color = '#000';
+                // Black advantage - bar shifts to white side (left)
+                const percentage = Math.max(50 + diff / 20, 10);
+                evalBar.style.width = `${percentage}%`;
+                evalBar.style.background = `linear-gradient(90deg, #fff 0%, #10b981 ${percentage/2}%, #000 ${percentage}%)`;
+            } else {
+                diffEl.textContent = '=';
+                diffEl.style.color = '#10b981';
+                evalBar.style.width = '50%';
+                evalBar.style.background = 'linear-gradient(90deg, #fff 0%, #10b981 50%, #000 100%)';
+            }
         }
         
         function updateReviewButtonState() {

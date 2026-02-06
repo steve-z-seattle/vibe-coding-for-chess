@@ -252,6 +252,10 @@ def import_pgn_to_game(pgn_text: str) -> Optional[ChessGame]:
         # Check if the opponent's king is in check (the player whose turn it is now)
         is_check = game.is_in_check(game.current_player)
         
+        # Check for checkmate (in check and no valid moves)
+        has_moves = game.has_any_valid_moves(game.current_player)
+        is_checkmate = is_check and not has_moves
+        
         # Add to move history (store full state for history review)
         # Store who made this move (opponent of whose turn it is now)
         player_who_moved = 'black' if game.current_player == 'white' else 'white'
@@ -266,7 +270,7 @@ def import_pgn_to_game(pgn_text: str) -> Optional[ChessGame]:
             'en_passant_target': game.en_passant_target,
             'current_player': player_who_moved,  # player who made this move
             'is_check': is_check,  # whether the player whose turn is next is in check
-            'is_checkmate': False
+            'is_checkmate': is_checkmate
         })
     
     return game
