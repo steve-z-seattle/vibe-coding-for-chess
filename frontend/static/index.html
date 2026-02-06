@@ -1678,17 +1678,21 @@
                 moveNum.textContent = Math.floor(i / 2) + 1 + '.';
                 moveListEl.appendChild(moveNum);
                 
-                // 白方移动
+                // 白方移动 (move number i+1)
                 const whiteMove = document.createElement('span');
-                whiteMove.className = 'move-white';
+                whiteMove.className = 'move-white move-clickable';
                 whiteMove.textContent = moveToAlgebraic(gameState.move_history[i], i);
+                whiteMove.style.cursor = 'pointer';
+                whiteMove.onclick = ((moveNum) => () => goToMove(moveNum))(i + 1);
                 moveListEl.appendChild(whiteMove);
                 
-                // 黑方移动
+                // 黑方移动 (move number i+2)
                 if (gameState.move_history[i + 1]) {
                     const blackMove = document.createElement('span');
-                    blackMove.className = 'move-black';
+                    blackMove.className = 'move-black move-clickable';
                     blackMove.textContent = moveToAlgebraic(gameState.move_history[i + 1], i + 1);
+                    blackMove.style.cursor = 'pointer';
+                    blackMove.onclick = ((moveNum) => () => goToMove(moveNum))(i + 2);
                     moveListEl.appendChild(blackMove);
                 }
             }
