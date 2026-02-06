@@ -1195,15 +1195,22 @@
             if (pendingPromotion) return;
             if (!gameState || gameState.game_over) return;
             
-            // 人机模式下，检查是否是玩家回合
-            if (gameConfig.mode === 'pve' && gameState.current_player !== gameConfig.playerColor) {
-                return;  // 不是玩家回合，忽略点击
-            }
-            
             const piece = gameState.board[row][col];
             
-            // 如果点击了有效移动位置
-            if (selectedSquare && validMoves.some(m => m.row === row && m.col === col)) {
+            // 判断是否是当前玩家可以控制的棋子
+            // PvP模式：当前回合的玩家可以控制自己的棋子
+            // PvE模式：玩家可以控制自己选择的颜色的棋子
+            let isPlayerPiece;
+            if (gameConfig.mode === 'pvp') {
+                isPlayerPiece = piece && piece.color === gameState.current_player;
+            } else {
+                isPlayerPiece = piece && piece.color === gameConfig.playerColor;
+            }
+            
+            const isPlayerTurn = gameConfig.mode === 'pvp' || gameState.current_player === gameConfig.playerColor;
+            
+            // 如果点击了有效移动位置（只有玩家回合才能移动）
+            if (isPlayerTurn && selectedSquare && validMoves.some(m => m.row === row && m.col === col)) {
                 const movingPiece = gameState.board[selectedSquare.row][selectedSquare.col];
                 
                 // 检查是否是兵升变
@@ -1217,8 +1224,8 @@
                 return;
             }
             
-            // 如果点击了自己的棋子，选中它
-            if (piece && piece.color === gameState.current_player) {
+            // 如果点击了玩家的棋子，选中它（即使不是玩家回合也可以选中，方便提前准备）
+            if (isPlayerPiece) {
                 selectedSquare = { row, col };
                 await loadValidMoves(row, col);
                 renderBoard();
