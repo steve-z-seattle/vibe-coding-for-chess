@@ -14,7 +14,7 @@ from chess_game import ChessGame
 from ai import ChessAI
 
 # Server version - increment this when making changes
-VERSION = "1.1.6"
+VERSION = "1.2.1"
 
 app = FastAPI(title="Chess API", version=VERSION)
 
@@ -120,6 +120,109 @@ async def get_game_state(game_id: str = "default"):
     """Get the current game state."""
     game = get_or_create_game(game_id)
     return game_state_to_dict(game)
+
+
+@app.get("/api/game/{game_id}/history/{move_number}")
+async def get_game_state_at_move(game_id: str = "default", move_number: int = 0):
+    """Get the game state at a specific move number (for review)."""
+    game = get_or_create_game(game_id)
+    
+    # move_number 0 = initial position, 1 = after first move, etc.
+    if move_number < 0 or move_number > len(game.move_history):
+        raise HTTPException(status_code=400, detail="Invalid move number")
+    
+    if move_number == 0:
+        # Return initial state (standard chess starting position)
+        initial_board = [
+            [{"color": "black", "type": "rook"}, {"color": "black", "type": "knight"}, {"color": "black", "type": "bishop"}, {"color": "black", "type": "queen"}, {"color": "black", "type": "king"}, {"color": "black", "type": "bishop"}, {"color": "black", "type": "knight"}, {"color": "black", "type": "rook"}],
+            [{"color": "black", "type": "pawn"} for _ in range(8)],
+            [None] * 8,
+            [None] * 8,
+            [None] * 8,
+            [None] * 8,
+            [{"color": "white", "type": "pawn"} for _ in range(8)],
+            [{"color": "white", "type": "rook"}, {"color": "white", "type": "knight"}, {"color": "white", "type": "bishop"}, {"color": "white", "type": "queen"}, {"color": "white", "type": "king"}, {"color": "white", "type": "bishop"}, {"color": "white", "type": "knight"}, {"color": "white", "type": "rook"}]
+        ]
+        return {
+            "board": initial_board,
+            "current_player": "white",
+            "move_history": [],
+            "captured_by_white": [],
+            "captured_by_black": [],
+            "last_move": None,
+            "king_positions": {
+                "white": {"row": 7, "col": 4},
+                "black": {"row": 0, "col": 4}
+            },
+            "castling_rights": {
+                "white": {"kingSide": True, "queenSide": True},
+                "black": {"kingSide": True, "queenSide": True}
+            },
+            "en_passant_target": None,
+            "in_check": False,
+            "game_over": False,
+            "winner": None,
+            "draw_reason": None,
+            "is_review": True,
+            "review_move_number": 0,
+            "total_moves": len(game.move_history)
+        }
+    
+    # Get state from move history
+    move_data = game.move_history[move_number - 1]
+    
+    # Calculate captured pieces up to this move
+    captured_by_white = []
+    captured_by_black = []
+    for i in range(move_number):
+        move = game.move_history[i]
+        if move['captured']:
+            if move['piece'].color == 'white':
+                captured_by_white.append({"color": move['captured'].color, "type": move['captured'].type})
+            else:
+                captured_by_black.append({"color": move['captured'].color, "type": move['captured'].type})
+    
+    # Get last move
+    last_move = None
+    if move_number >= 1:
+        last_move = {
+            "from": {"row": move_data['from'].row, "col": move_data['from'].col},
+            "to": {"row": move_data['to'].row, "col": move_data['to'].col}
+        }
+    
+    # Convert board state at that move
+    board_at_move = move_data['board']
+    serializable_board = []
+    for row in board_at_move:
+        serializable_row = []
+        for piece in row:
+            if piece:
+                serializable_row.append({"color": piece.color, "type": piece.type})
+            else:
+                serializable_row.append(None)
+        serializable_board.append(serializable_row)
+    
+    return {
+        "board": serializable_board,
+        "current_player": 'black' if move_data['current_player'] == 'white' else 'white',
+        "move_history": game.move_history[:move_number],
+        "captured_by_white": captured_by_white,
+        "captured_by_black": captured_by_black,
+        "last_move": last_move,
+        "king_positions": {
+            "white": {"row": move_data['king_positions']['white'].row, "col": move_data['king_positions']['white'].col},
+            "black": {"row": move_data['king_positions']['black'].row, "col": move_data['king_positions']['black'].col}
+        },
+        "castling_rights": move_data['castling_rights'],
+        "en_passant_target": {"row": move_data['en_passant_target'].row, "col": move_data['en_passant_target'].col} if move_data['en_passant_target'] else None,
+        "in_check": False,  # Simplified - would need to calculate
+        "game_over": False,
+        "winner": None,
+        "draw_reason": None,
+        "is_review": True,
+        "review_move_number": move_number,
+        "total_moves": len(game.move_history)
+    }
 
 
 @app.post("/api/game/{game_id}/reset")
