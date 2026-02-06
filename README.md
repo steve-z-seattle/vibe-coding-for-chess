@@ -10,11 +10,13 @@
 │   ├── main.py              # FastAPI 主应用
 │   ├── chess_game.py        # 国际象棋游戏逻辑
 │   ├── ai.py                # AI 算法
+│   ├── pgn_parser.py        # PGN 棋谱解析器
 │   ├── models.py            # Pydantic 数据模型
 │   └── tests/               # 单元测试
 │       ├── test_chess_game.py   # 游戏逻辑测试
 │       ├── test_ai.py           # AI 算法测试
 │       ├── test_api.py          # API 集成测试
+│       ├── test_pgn_parser.py   # PGN 解析器测试
 │       └── conftest.py          # 测试配置
 ├── frontend/                # 前端文件
 │   └── static/
@@ -83,6 +85,9 @@ uvicorn main:app --reload
 - `GET /api/game/{game_id}/check` - 检查游戏是否结束
 - `GET /api/game/{game_id}/history/{move_number}` - 获取指定步数的历史局面（用于棋局回顾）
 
+### PGN 导入
+- `POST /api/game/{game_id}/import-pgn` - 从 PGN 格式导入棋局
+
 ## 功能特性
 
 - ✅ 完整的国际象棋规则
@@ -111,6 +116,7 @@ uvicorn main:app --reload
   - 棋局回顾导航（支持键盘快捷键）
   - 走棋音效
   - 棋盘翻转
+  - PGN 棋谱导入（支持开局导入和棋局复盘）
 
 ## 技术栈
 
@@ -184,6 +190,32 @@ python -m pytest tests/ --cov=. --cov-report=html
   - 游戏重置
   - 多人游戏隔离
   - 错误处理
+  
+- **test_pgn_parser.py** (54 测试): PGN 解析器测试
+  - PGN 头部和走棋解析
+  - 代数记谱法转换
+  - 王车易位、升变、消歧处理
+  - 完整棋局导入
+  - 边界情况和错误处理
+
+## PGN 导入功能
+
+支持从标准 PGN (Portable Game Notation) 格式导入棋局：
+
+```
+[Event "FIDE World Championship"]
+[White "Carlsen, Magnus"]
+[Black "Caruana, Fabiano"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 1-0
+```
+
+特性：
+- 在游戏开始界面选择"导入 PGN"
+- 自动解析头部信息（赛事、选手、结果等）
+- 支持注释和变着过滤
+- 导入后可使用棋局回顾功能复盘
 
 ## 许可证
 
