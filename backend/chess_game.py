@@ -343,6 +343,13 @@ class ChessGame:
         self.last_move = {'from': Position(row=from_row, col=from_col),
                           'to': Position(row=to_row, col=to_col)}
         
+        # Switch player
+        self.current_player = 'black' if self.current_player == 'white' else 'white'
+        
+        # Check if opponent is in check or checkmate
+        opponent_in_check = self.is_in_check(self.current_player)
+        opponent_has_moves = self.has_any_valid_moves(self.current_player)
+        
         # Save state to history
         self.move_history.append({
             'piece': piece,
@@ -353,11 +360,10 @@ class ChessGame:
             'castling_rights': copy.deepcopy(self.castling_rights),
             'king_positions': copy.deepcopy(self.king_positions),
             'en_passant_target': self.en_passant_target,
-            'current_player': self.current_player
+            'current_player': 'black' if self.current_player == 'white' else 'white',  # player who made the move
+            'is_check': opponent_in_check,
+            'is_checkmate': opponent_in_check and not opponent_has_moves
         })
-        
-        # Switch player
-        self.current_player = 'black' if self.current_player == 'white' else 'white'
         
         return True, "Move successful"
 

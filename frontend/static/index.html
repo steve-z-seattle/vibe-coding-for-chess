@@ -1499,24 +1499,33 @@
             const isCapture = moveData.captured !== null;
             const captureSymbol = isCapture ? 'x' : '';
             
+            let notation = '';
+            
             // 王车易位特殊处理
             if (piece.type === 'king' && Math.abs(toCol - fromCol) === 2) {
-                return toCol > fromCol ? 'O-O' : 'O-O-O';
-            }
-            
-            // 兵的特殊处理
-            if (piece.type === 'pawn') {
+                notation = toCol > fromCol ? 'O-O' : 'O-O-O';
+            } else if (piece.type === 'pawn') {
                 // 兵吃子时需要标明列（如 exd5）
                 if (isCapture) {
                     const fromFile = String.fromCharCode(97 + fromCol);
-                    return fromFile + 'x' + toSquare;
+                    notation = fromFile + 'x' + toSquare;
+                } else {
+                    // 兵的普通移动只写目标格
+                    notation = toSquare;
                 }
-                // 兵的普通移动只写目标格
-                return toSquare;
+            } else {
+                // 其他棋子
+                notation = pieceSymbol + captureSymbol + toSquare;
             }
             
-            // 其他棋子
-            return pieceSymbol + captureSymbol + toSquare;
+            // 添加将军/将杀标记
+            if (moveData.is_checkmate) {
+                notation += '#';
+            } else if (moveData.is_check) {
+                notation += '+';
+            }
+            
+            return notation;
         }
 
         // 更新走棋记录

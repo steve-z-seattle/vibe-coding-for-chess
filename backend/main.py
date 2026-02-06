@@ -14,7 +14,7 @@ from chess_game import ChessGame
 from ai import ChessAI
 
 # Server version - increment this when making changes
-VERSION = "1.3.1"
+VERSION = "1.3.3"
 
 app = FastAPI(title="Chess API", version=VERSION)
 
@@ -86,10 +86,23 @@ def game_state_to_dict(game: ChessGame) -> dict:
     if state.en_passant_target:
         en_passant = {"row": state.en_passant_target.row, "col": state.en_passant_target.col}
     
+    # Convert move history to serializable format
+    serializable_move_history = []
+    for move in state.move_history:
+        serializable_move = {
+            "piece": {"color": move["piece"].color, "type": move["piece"].type},
+            "from": {"row": move["from"].row, "col": move["from"].col},
+            "to": {"row": move["to"].row, "col": move["to"].col},
+            "captured": {"color": move["captured"].color, "type": move["captured"].type} if move["captured"] else None,
+            "is_check": move.get("is_check", False),
+            "is_checkmate": move.get("is_checkmate", False)
+        }
+        serializable_move_history.append(serializable_move)
+    
     return {
         "board": serializable_board,
         "current_player": state.current_player,
-        "move_history": state.move_history,
+        "move_history": serializable_move_history,
         "captured_by_white": captured_by_white,
         "captured_by_black": captured_by_black,
         "last_move": last_move,
@@ -202,10 +215,23 @@ async def get_game_state_at_move(game_id: str = "default", move_number: int = 0)
                 serializable_row.append(None)
         serializable_board.append(serializable_row)
     
+    # Convert move history to serializable format
+    serializable_move_history = []
+    for move in game.move_history[:move_number]:
+        serializable_move = {
+            "piece": {"color": move["piece"].color, "type": move["piece"].type},
+            "from": {"row": move["from"].row, "col": move["from"].col},
+            "to": {"row": move["to"].row, "col": move["to"].col},
+            "captured": {"color": move["captured"].color, "type": move["captured"].type} if move["captured"] else None,
+            "is_check": move.get("is_check", False),
+            "is_checkmate": move.get("is_checkmate", False)
+        }
+        serializable_move_history.append(serializable_move)
+    
     return {
         "board": serializable_board,
         "current_player": 'black' if move_data['current_player'] == 'white' else 'white',
-        "move_history": game.move_history[:move_number],
+        "move_history": serializable_move_history,
         "captured_by_white": captured_by_white,
         "captured_by_black": captured_by_black,
         "last_move": last_move,
