@@ -16,7 +16,7 @@ from ai import ChessAI
 from pgn_parser import import_pgn_to_game, parse_pgn
 
 # Server version - increment this when making changes
-VERSION = "1.5.4"
+VERSION = "1.5.5"
 
 app = FastAPI(title="Chess API", version=VERSION)
 
@@ -232,7 +232,7 @@ async def get_game_state_at_move(game_id: str = "default", move_number: int = 0)
     
     return {
         "board": serializable_board,
-        "current_player": 'black' if move_data['current_player'] == 'white' else 'white',
+        "current_player": move_data['current_player'],
         "move_history": serializable_move_history,
         "captured_by_white": captured_by_white,
         "captured_by_black": captured_by_black,
@@ -243,7 +243,7 @@ async def get_game_state_at_move(game_id: str = "default", move_number: int = 0)
         },
         "castling_rights": move_data['castling_rights'],
         "en_passant_target": {"row": move_data['en_passant_target'].row, "col": move_data['en_passant_target'].col} if move_data['en_passant_target'] else None,
-        "in_check": False,  # Simplified - would need to calculate
+        "in_check": move_data.get('is_check', False),
         "game_over": False,
         "winner": None,
         "draw_reason": None,
