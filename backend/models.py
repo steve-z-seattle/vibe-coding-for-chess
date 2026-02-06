@@ -74,3 +74,14 @@ class AIMoveResponse(BaseModel):
 
 class AIConfigRequest(BaseModel):
     depth: int = 3  # AI 搜索深度，2=简单, 3=中等, 4=困难
+
+
+class PGNImportRequest(BaseModel):
+    pgn_text: str
+
+
+class PGNImportResponse(BaseModel):
+    success: bool
+    message: str
+    game_state: Optional[Dict[str, Any]] = None
+    headers: Optional[Dict[str, str]] = None

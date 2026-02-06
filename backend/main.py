@@ -8,13 +8,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from models import (
     MoveRequest, MoveResponse, ValidMovesResponse, ValidMove,
-    GameState, AIMoveResponse, Position, AIConfigRequest
+    GameState, AIMoveResponse, Position, AIConfigRequest,
+    PGNImportRequest, PGNImportResponse
 )
 from chess_game import ChessGame
 from ai import ChessAI
+from pgn_parser import import_pgn_to_game, parse_pgn
 
 # Server version - increment this when making changes
-VERSION = "1.4.4"
+VERSION = "1.5.2"
 
 app = FastAPI(title="Chess API", version=VERSION)
 
@@ -344,6 +346,37 @@ async def configure_ai(config: AIConfigRequest, game_id: str = "default"):
     max_time = time_limits.get(config.depth, 2.0)
     ai_players[game_id] = ChessAI(depth=config.depth, max_time=max_time)
     return {"success": True, "depth": config.depth, "max_time": max_time}
+
+
+@app.post("/api/game/{game_id}/import-pgn")
+async def import_pgn(request: PGNImportRequest, game_id: str = "default"):
+    """Import a game from PGN format."""
+    try:
+        pgn_game = parse_pgn(request.pgn_text)
+        game = import_pgn_to_game(request.pgn_text)
+        
+        if game is None:
+            return PGNImportResponse(
+                success=False,
+                message="Failed to parse PGN. Please check the format.",
+                game_state=None
+            )
+        
+        # Store the game
+        games[game_id] = game
+        
+        return PGNImportResponse(
+            success=True,
+            message="PGN imported successfully",
+            game_state=game_state_to_dict(game),
+            headers=pgn_game.headers
+        )
+    except Exception as e:
+        return PGNImportResponse(
+            success=False,
+            message=f"Error importing PGN: {str(e)}",
+            game_state=None
+        )
 
 
 # Mount static files - 从 backend 目录向上退一级到项目根目录，再进入 frontend/static

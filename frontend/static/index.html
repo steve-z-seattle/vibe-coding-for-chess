@@ -817,6 +817,18 @@
                 <button class="btn-secondary" onclick="resetGame()">🔄 新游戏</button>
                 <button class="btn-secondary" onclick="flipBoard()">🔃 翻转棋盘</button>
                 <button class="btn-secondary" onclick="showGameModeModal()">⚙️ 游戏设置</button>
+                <button class="btn-secondary" onclick="showPGNModal()">📄 导入PGN</button>
+            </div>
+            
+            <!-- PGN导入区域 -->
+            <div class="pgn-import-panel" id="pgnPanel" style="display: none; margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(59, 130, 246, 0.3);">
+                <div class="pgn-title" style="font-size: 12px; color: #a0aec0; margin-bottom: 8px; text-transform: uppercase;">PGN 棋谱</div>
+                <textarea id="pgnInput" placeholder="粘贴 PGN 棋谱 here...&#10;[Event \"Game\"]&#10;[White \"Player1\"]&#10;[Black \"Player2\"]&#10;&#10;1. e4 e5 2. Nf3 Nc6 ..." style="width: 100%; height: 80px; background: rgba(0,0,0,0.3); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 4px; color: #e5e7eb; padding: 8px; font-family: monospace; font-size: 11px; resize: vertical; box-sizing: border-box;"></textarea>
+                <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <button class="btn-review" onclick="importPGN()" style="flex: 1;">导入</button>
+                    <button class="btn-review" onclick="togglePGNPanel()" style="flex: 1;">隐藏</button>
+                </div>
+                <div id="pgnError" style="color: #ef4444; font-size: 11px; margin-top: 5px; display: none;"></div>
             </div>
         </div>
     </div>
@@ -1745,14 +1757,20 @@
         }
         
         function goToPrev() {
+            console.log('goToPrev called, current:', reviewState.currentMoveNumber, 'total:', reviewState.totalMoves);
             if (reviewState.currentMoveNumber > 0) {
                 goToMove(reviewState.currentMoveNumber - 1);
+            } else {
+                console.log('goToPrev: already at start');
             }
         }
         
         function goToNext() {
+            console.log('goToNext called, current:', reviewState.currentMoveNumber, 'total:', reviewState.totalMoves);
             if (reviewState.currentMoveNumber < reviewState.totalMoves) {
                 goToMove(reviewState.currentMoveNumber + 1);
+            } else {
+                console.log('goToNext: already at end');
             }
         }
         
@@ -1773,8 +1791,13 @@
             const prevBtn = document.querySelector('button[onclick="goToPrev()"]');
             const nextBtn = document.querySelector('button[onclick="goToNext()"]');
             
+            console.log('updateReviewButtonState:', 'current:', reviewState.currentMoveNumber, 'total:', reviewState.totalMoves);
+            console.log('Buttons found:', 'prev:', !!prevBtn, 'next:', !!nextBtn);
+            
             if (prevBtn) prevBtn.disabled = reviewState.currentMoveNumber === 0;
             if (nextBtn) nextBtn.disabled = reviewState.currentMoveNumber >= reviewState.totalMoves;
+            
+            console.log('Button states:', 'prev disabled:', prevBtn?.disabled, 'next disabled:', nextBtn?.disabled);
         }
         
         function highlightLastMove(from, to) {
@@ -1857,6 +1880,65 @@
         // 显示错误
         function showError(message) {
             alert(message);
+        }
+
+        // PGN导入相关函数
+        function showPGNModal() {
+            const panel = document.getElementById('pgnPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        function togglePGNPanel() {
+            document.getElementById('pgnPanel').style.display = 'none';
+        }
+        
+        async function importPGN() {
+            const pgnText = document.getElementById('pgnInput').value.trim();
+            const errorEl = document.getElementById('pgnError');
+            
+            if (!pgnText) {
+                errorEl.textContent = '请输入 PGN 棋谱';
+                errorEl.style.display = 'block';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/game/${GAME_ID}/import-pgn`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pgn_text: pgnText })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    gameState = result.game_state;
+                    reviewState.currentMoveNumber = result.game_state.move_history.length;
+                    reviewState.totalMoves = result.game_state.move_history.length;
+                    selectedSquare = null;
+                    validMoves = [];
+                    renderBoard();
+                    updateStatus();
+                    updateCapturedPieces();
+                    updateMoveList();
+                    updateReviewState();
+                    updateReviewButtonState();
+                    errorEl.style.display = 'none';
+                    
+                    // Show success message with game info
+                    const white = result.headers?.White || 'Unknown';
+                    const black = result.headers?.Black || 'Unknown';
+                    const event = result.headers?.Event || 'Imported Game';
+                    alert(`PGN 导入成功！\n\n赛事: ${event}\n白方: ${white}\n黑方: ${black}\n\n总步数: ${result.game_state.move_history.length}`);
+                } else {
+                    errorEl.textContent = result.message || '导入失败';
+                    errorEl.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('PGN import failed:', error);
+                errorEl.textContent = '导入失败: ' + error.message;
+                errorEl.style.display = 'block';
+            }
         }
 
         // 初始化
