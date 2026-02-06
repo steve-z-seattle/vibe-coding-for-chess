@@ -76,12 +76,12 @@ uvicorn main:app --reload
 ### 游戏操作
 - `POST /api/game/{game_id}/reset` - 重置游戏
 - `POST /api/game/{game_id}/move` - 执行移动
-- `POST /api/game/{game_id}/undo` - 悔棋
 - `POST /api/game/{game_id}/ai-move` - AI 走棋
 
 ### 查询
 - `GET /api/game/{game_id}/valid-moves?row={row}&col={col}` - 获取指定棋子的有效移动
 - `GET /api/game/{game_id}/check` - 检查游戏是否结束
+- `GET /api/game/{game_id}/history/{move_number}` - 获取指定步数的历史局面（用于棋局回顾）
 
 ## 功能特性
 
@@ -99,14 +99,17 @@ uvicorn main:app --reload
   - Alpha-Beta 剪枝优化
   - 位置评估函数
   - 自动升变为皇后
+  - 三种难度级别（简单/中等/困难）
+  - 快速响应（简单模式 < 1秒）
 
 - ✅ 前端功能
   - 响应式设计
   - 棋子拖拽/点击移动
   - 有效移动提示
   - 走棋记录
-  - 被吃棋子显示
-  - 悔棋功能
+  - 被吃棋子显示（净数量）
+  - 棋局回顾导航（支持键盘快捷键）
+  - 走棋音效
   - 棋盘翻转
 
 ## 技术栈
@@ -117,13 +120,19 @@ uvicorn main:app --reload
 
 ## AI 算法
 
-AI 使用 Minimax 算法配合 Alpha-Beta 剪枝，搜索深度默认为 3 层。
+AI 使用 Minimax 算法配合 Alpha-Beta 剪枝，支持三种难度级别：
+
+| 难度 | 搜索深度 | 思考时间 |
+|------|----------|----------|
+| 简单 | 1-2 层 | ~0.5 秒 |
+| 中等 | 2-3 层 | ~1 秒 |
+| 困难 | 3-4 层 | ~1.5 秒 |
 
 评估函数考虑：
 - 棋子基础价值
 - 棋子位置价值（使用标准开局/中局位置表）
-- 行动力（可移动格子数）
 - 将军奖励
+- Zobrist 哈希（用于置换表优化）
 
 ## 单元测试
 
@@ -159,21 +168,20 @@ python -m pytest tests/ --cov=. --cov-report=html
   - 各棋子移动规则（兵、马、象、车、后、王）
   - 特殊规则（王车易位、吃过路兵、升变）
   - 将军、将死、逼和检测
-  - 悔棋功能
   
 - **test_ai.py** (35+ 测试): AI 算法测试
   - 棋子价值评估
   - 位置评估表
   - 最佳走法生成
   - 置换表功能
-  - 快速走法/悔棋操作
+  - 快速走法操作
   - 时间管理
   
 - **test_api.py** (35+ 测试): API 集成测试
   - 所有 REST API 端点
   - 游戏状态获取
   - 走棋操作
-  - 悔棋和重置
+  - 游戏重置
   - 多人游戏隔离
   - 错误处理
 
