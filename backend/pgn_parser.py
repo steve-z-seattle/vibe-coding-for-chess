@@ -253,6 +253,8 @@ def import_pgn_to_game(pgn_text: str) -> Optional[ChessGame]:
         is_check = game.is_in_check(game.current_player)
         
         # Add to move history (store full state for history review)
+        # Store who made this move (opponent of whose turn it is now)
+        player_who_moved = 'black' if game.current_player == 'white' else 'white'
         game.move_history.append({
             'piece': piece,
             'from': from_pos,
@@ -262,8 +264,8 @@ def import_pgn_to_game(pgn_text: str) -> Optional[ChessGame]:
             'castling_rights': copy.deepcopy(game.castling_rights),
             'king_positions': copy.deepcopy(game.king_positions),
             'en_passant_target': game.en_passant_target,
-            'current_player': game.current_player,  # player whose turn is next
-            'is_check': is_check,
+            'current_player': player_who_moved,  # player who made this move
+            'is_check': is_check,  # whether the player whose turn is next is in check
             'is_checkmate': False
         })
     
