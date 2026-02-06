@@ -16,7 +16,7 @@ from ai import ChessAI
 from pgn_parser import import_pgn_to_game, parse_pgn
 
 # Server version - increment this when making changes
-VERSION = "1.5.2"
+VERSION = "1.5.4"
 
 app = FastAPI(title="Chess API", version=VERSION)
 
@@ -359,23 +359,27 @@ async def import_pgn(request: PGNImportRequest, game_id: str = "default"):
             return PGNImportResponse(
                 success=False,
                 message="Failed to parse PGN. Please check the format.",
-                game_state=None
+                game_state=None,
+                moves_imported=0
             )
         
         # Store the game
         games[game_id] = game
+        moves_count = len(game.move_history)
         
         return PGNImportResponse(
             success=True,
             message="PGN imported successfully",
             game_state=game_state_to_dict(game),
-            headers=pgn_game.headers
+            headers=pgn_game.headers,
+            moves_imported=moves_count
         )
     except Exception as e:
         return PGNImportResponse(
             success=False,
             message=f"Error importing PGN: {str(e)}",
-            game_state=None
+            game_state=None,
+            moves_imported=0
         )
 
 

@@ -85,3 +85,4 @@ class PGNImportResponse(BaseModel):
     message: str
     game_state: Optional[Dict[str, Any]] = None
     headers: Optional[Dict[str, str]] = None
+    moves_imported: int = 0

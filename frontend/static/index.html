@@ -854,6 +854,20 @@
                         <span class="mode-option-desc">与 AI 进行对战</span>
                     </div>
                 </label>
+                
+                <label class="mode-option" onclick="selectGameMode('import')">
+                    <input type="radio" name="gameMode" value="import" id="modeImport">
+                    <div class="mode-option-label">
+                        <span class="mode-option-title">📄 导入 PGN</span>
+                        <span class="mode-option-desc">从 PGN 文件加载棋局</span>
+                    </div>
+                </label>
+            </div>
+            
+            <!-- PGN 导入区域 -->
+            <div class="pgn-import-area" id="pgnImportArea" style="display: none; margin: 15px 0;">
+                <textarea id="pgnImportInput" placeholder="粘贴 PGN 棋谱 here...&#10;[Event \"Game\"]&#10;[White \"Player1\"]&#10;[Black \"Player2\"]&#10;&#10;1. e4 e5 2. Nf3 Nc6 ..." style="width: 100%; height: 120px; background: rgba(0,0,0,0.3); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 4px; color: #e5e7eb; padding: 10px; font-family: monospace; font-size: 12px; resize: vertical; box-sizing: border-box;"></textarea>
+                <div id="pgnImportError" style="color: #ef4444; font-size: 12px; margin-top: 5px; display: none;"></div>
             </div>
             
             <!-- AI 设置 -->
@@ -1044,12 +1058,20 @@
             gameConfig.mode = mode;
             document.getElementById('modePvp').checked = (mode === 'pvp');
             document.getElementById('modePve').checked = (mode === 'pve');
+            document.getElementById('modeImport').checked = (mode === 'import');
             
             const aiSettings = document.getElementById('aiSettings');
+            const pgnImportArea = document.getElementById('pgnImportArea');
+            
             if (mode === 'pve') {
                 aiSettings.style.display = 'block';
+                pgnImportArea.style.display = 'none';
+            } else if (mode === 'import') {
+                aiSettings.style.display = 'none';
+                pgnImportArea.style.display = 'block';
             } else {
                 aiSettings.style.display = 'none';
+                pgnImportArea.style.display = 'none';
             }
         }
 
@@ -1075,6 +1097,60 @@
 
         // 开始游戏
         async function startGame() {
+            // 处理 PGN 导入模式
+            if (gameConfig.mode === 'import') {
+                const pgnText = document.getElementById('pgnImportInput').value.trim();
+                const errorDiv = document.getElementById('pgnImportError');
+                
+                if (!pgnText) {
+                    errorDiv.textContent = '请输入 PGN 棋谱';
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`${API_BASE_URL}/game/${GAME_ID}/import-pgn`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ pgn_text: pgnText })
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        errorDiv.style.display = 'none';
+                        
+                        // 隐藏模式选择对话框
+                        document.getElementById('gameModeModal').classList.remove('active');
+                        
+                        // 显示游戏模式信息
+                        const modeInfo = document.getElementById('gameModeInfo');
+                        const modeLabel = document.getElementById('gameModeLabel');
+                        const aiMoveBtn = document.getElementById('aiMoveBtn');
+                        
+                        modeInfo.style.display = 'block';
+                        modeLabel.textContent = `📄 PGN 导入 | ${result.moves_imported} 步`;
+                        aiMoveBtn.style.display = 'none';
+                        
+                        // 加载游戏状态
+                        await loadGameState();
+                        renderBoard();
+                        updateStatus();
+                        updateMoveList();
+                        
+                        return;
+                    } else {
+                        const error = await response.json();
+                        errorDiv.textContent = error.detail || '导入失败，请检查 PGN 格式';
+                        errorDiv.style.display = 'block';
+                        return;
+                    }
+                } catch (error) {
+                    errorDiv.textContent = '导入失败：' + error.message;
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+            }
+            
             // 设置 AI 难度
             if (gameConfig.mode === 'pve') {
                 try {
