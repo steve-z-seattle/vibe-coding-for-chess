@@ -16,7 +16,7 @@ from ai import ChessAI
 from pgn_parser import import_pgn_to_game, parse_pgn
 
 # Server version - increment this when making changes
-VERSION = "1.6.0"
+VERSION = "1.6.2"
 
 app = FastAPI(title="Chess API", version=VERSION)
 
@@ -230,9 +230,13 @@ async def get_game_state_at_move(game_id: str = "default", move_number: int = 0)
         }
         serializable_move_history.append(serializable_move)
     
+    # current_player in move_data is the player who made this move
+    # We need to return whose turn it is AFTER this move (the opponent)
+    next_player = 'black' if move_data['current_player'] == 'white' else 'white'
+    
     return {
         "board": serializable_board,
-        "current_player": move_data['current_player'],
+        "current_player": next_player,
         "move_history": serializable_move_history,
         "captured_by_white": captured_by_white,
         "captured_by_black": captured_by_black,
