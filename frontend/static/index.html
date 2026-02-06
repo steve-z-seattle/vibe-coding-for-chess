@@ -832,17 +832,17 @@
                 <div class="setting-group">
                     <span class="setting-label">AI 难度</span>
                     <div class="difficulty-options">
-                        <div class="difficulty-option selected" id="diffEasy" onclick="selectDifficulty(2)">
+                        <div class="difficulty-option selected" id="diffEasy" onclick="selectDifficulty(1)">
                             <span class="difficulty-name">简单</span>
-                            <span class="difficulty-desc">思考快</span>
+                            <span class="difficulty-desc">< 1秒</span>
                         </div>
-                        <div class="difficulty-option" id="diffMedium" onclick="selectDifficulty(3)">
+                        <div class="difficulty-option" id="diffMedium" onclick="selectDifficulty(2)">
                             <span class="difficulty-name">中等</span>
-                            <span class="difficulty-desc">较平衡</span>
+                            <span class="difficulty-desc">~1秒</span>
                         </div>
-                        <div class="difficulty-option" id="diffHard" onclick="selectDifficulty(4)">
+                        <div class="difficulty-option" id="diffHard" onclick="selectDifficulty(3)">
                             <span class="difficulty-name">困难</span>
-                            <span class="difficulty-desc">思考慢</span>
+                            <span class="difficulty-desc">~2秒</span>
                         </div>
                     </div>
                 </div>
@@ -958,7 +958,7 @@
         let gameConfig = {
             mode: 'pvp',  // 'pvp' 或 'pve'
             playerColor: 'white',  // 玩家颜色（人机模式下）
-            aiDifficulty: 2  // AI 难度等级
+            aiDifficulty: 1  // AI 难度等级 (1=Easy, 2=Medium, 3=Hard)
         };
         
         // AI 思考状态标志
@@ -1068,7 +1068,7 @@
                 aiMoveBtn.style.display = 'none';
             } else {
                 const colorText = gameConfig.playerColor === 'white' ? '白方' : '黑方';
-                const diffText = gameConfig.aiDifficulty === 2 ? '简单' : (gameConfig.aiDifficulty === 3 ? '中等' : '困难');
+                const diffText = gameConfig.aiDifficulty === 1 ? '简单' : (gameConfig.aiDifficulty === 2 ? '中等' : '困难');
                 modeLabel.textContent = `🤖 人机对战 | 你是${colorText} | ${diffText}`;
                 aiMoveBtn.style.display = 'none';  // 自动走棋，不需要按钮
                 
