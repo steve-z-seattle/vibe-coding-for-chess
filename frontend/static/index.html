@@ -1227,7 +1227,12 @@
             // 如果点击了玩家的棋子，选中它（即使不是玩家回合也可以选中，方便提前准备）
             if (isPlayerPiece) {
                 selectedSquare = { row, col };
-                await loadValidMoves(row, col);
+                // 只有在玩家回合时才加载有效移动
+                if (isPlayerTurn) {
+                    await loadValidMoves(row, col);
+                } else {
+                    validMoves = [];
+                }
                 renderBoard();
                 return;
             }
@@ -1378,6 +1383,12 @@
                     updateReviewState();
                     updateReviewButtonState();
                     checkGameEnd();
+                    
+                    // 如果玩家有预选的棋子，重新加载有效移动
+                    if (selectedSquare && gameConfig.mode === 'pve' && gameState.current_player === gameConfig.playerColor) {
+                        await loadValidMoves(selectedSquare.row, selectedSquare.col);
+                        renderBoard();
+                    }
                 } else if (result.message && result.message.includes("retry")) {
                     // 游戏状态被其他请求改变，稍等后刷新状态
                     console.log("Game state changed, refreshing...");
